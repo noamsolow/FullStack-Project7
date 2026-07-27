@@ -1,8 +1,5 @@
-import fs from "node:fs/promises";
-import path from "node:path";
-import { config } from "../config/index.js";
 import { withTransaction } from "../db/pool.js";
-import { findVendorByPublicId } from "../repositories/catalogRepository.js";
+import { findVendorByPublicId } from "../models/catalogModel.js";
 import {
   addPrintHistory,
   attachPrintProviderOrder,
@@ -21,8 +18,8 @@ import {
   quotePrintJob,
   setPrintPaymentProcessing,
   setPrintStatus,
-} from "../repositories/printRepository.js";
-import { writeAudit } from "../repositories/auditRepository.js";
+} from "../models/printModel.js";
+import { writeAudit } from "../models/auditModel.js";
 import {
   capturePayPalOrder,
   captureSummary,
@@ -33,7 +30,6 @@ import { AppError, conflict, forbidden, notFound } from "../utils/AppError.js";
 import {
   safeOriginalName,
   sha256,
-  storageName,
   validatePdf,
 } from "../utils/files.js";
 import { publicId, referenceNumber, shortCode } from "../utils/identifiers.js";
@@ -63,44 +59,35 @@ export async function submitPrintJob(user, input, file, context) {
 
   const jobPublicId = publicId();
   const filePublicId = publicId();
-  const storedName = storageName(".pdf");
-  const target = path.join(config.storage.printFiles, storedName);
-  await fs.writeFile(target, file.buffer, { flag: "wx" });
-
-  try {
-    await withTransaction(async (connection) => {
-      const printJobId = await createPrintJob({
-        publicId: jobPublicId,
-        jobNumber: referenceNumber("PR"),
-        userId: user.id,
-        vendorId: vendor.id,
-        paperSize: input.paperSize,
-        colorMode: input.colorMode,
-        sides: input.sides,
-        copies: input.copies,
-        stapled: input.stapled,
-        customerNote: input.customerNote,
-        pickupCode: shortCode(),
-      }, connection);
-      await insertPrintFile({
-        publicId: filePublicId,
-        printJobId,
-        storageName: storedName,
-        originalName: safeOriginalName(file.originalname),
-        sizeBytes: file.size,
-        sha256: sha256(file.buffer),
-      }, connection);
-      await addPrintHistory({
-        printJobId,
-        actorUserId: user.id,
-        toStatus: "submitted",
-        note: "Submitted for private review and quote",
-      }, connection);
-    });
-  } catch (error) {
-    await fs.unlink(target).catch(() => {});
-    throw error;
-  }
+  await withTransaction(async (connection) => {
+    const printJobId = await createPrintJob({
+      publicId: jobPublicId,
+      jobNumber: referenceNumber("PR"),
+      userId: user.id,
+      vendorId: vendor.id,
+      paperSize: input.paperSize,
+      colorMode: input.colorMode,
+      sides: input.sides,
+      copies: input.copies,
+      stapled: input.stapled,
+      customerNote: input.customerNote,
+      pickupCode: shortCode(),
+    }, connection);
+    await insertPrintFile({
+      publicId: filePublicId,
+      printJobId,
+      originalName: safeOriginalName(file.originalname),
+      sizeBytes: file.size,
+      fileData: file.buffer,
+      sha256: sha256(file.buffer),
+    }, connection);
+    await addPrintHistory({
+      printJobId,
+      actorUserId: user.id,
+      toStatus: "submitted",
+      note: "Submitted for private review and quote",
+    }, connection);
+  });
 
   await writeAudit({
     actorUserId: user.id,

@@ -1,4 +1,4 @@
-import { apiMediaUrl } from "../../services/apiClient.js";
+import { apiMediaUrl } from "../../services/core/apiClient.js";
 
 const visuals = {
   meal: ["🥙", "visual--coral"],
@@ -30,4 +30,3 @@ export function ProductVisual({ product, large = false }) {
     </div>
   );
 }
-

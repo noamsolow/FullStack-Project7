@@ -48,10 +48,6 @@ export function validatePdf(file) {
   return ".pdf";
 }
 
-export function storageName(extension) {
-  return `${crypto.randomUUID()}${extension}`;
-}
-
 export function safeOriginalName(name) {
   return path.basename(name).replace(/[\u0000-\u001f\u007f]/g, "").slice(0, 255);
 }
@@ -59,4 +55,3 @@ export function safeOriginalName(name) {
 export function sha256(buffer) {
   return crypto.createHash("sha256").update(buffer).digest("hex");
 }
-

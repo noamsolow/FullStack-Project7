@@ -1,10 +1,7 @@
-import fs from "node:fs/promises";
-import path from "node:path";
-import { config } from "../config/index.js";
 import {
   listExpiredPrintFiles,
   markPrintFileDeleted,
-} from "../repositories/printRepository.js";
+} from "../models/printModel.js";
 import { expireReservations } from "./orderService.js";
 
 export async function runCleanup() {
@@ -12,10 +9,6 @@ export async function runCleanup() {
   const files = await listExpiredPrintFiles();
   let deletedFiles = 0;
   for (const file of files) {
-    const target = path.join(config.storage.printFiles, file.storage_name);
-    await fs.unlink(target).catch((error) => {
-      if (error.code !== "ENOENT") throw error;
-    });
     await markPrintFileDeleted(file.id);
     deletedFiles += 1;
   }

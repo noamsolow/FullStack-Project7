@@ -2,7 +2,7 @@ import globals from "globals";
 
 export default [
   {
-    ignores: ["storage/**", "coverage/**"],
+    ignores: ["coverage/**"],
   },
   {
     files: ["**/*.js"],
@@ -22,4 +22,3 @@ export default [
     },
   },
 ];
-

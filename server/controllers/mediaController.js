@@ -10,7 +10,8 @@ function send(response, file, attachment = false) {
     "Content-Disposition",
     `${attachment ? "attachment" : "inline"}; filename*=UTF-8''${encodeURIComponent(file.downloadName)}`,
   );
-  response.sendFile(file.path);
+  response.setHeader("Content-Length", file.data.length);
+  response.send(file.data);
 }
 
 export async function productImageHandler(request, response) {
@@ -24,4 +25,3 @@ export async function printFileHandler(request, response) {
 export async function maintenanceImageHandler(request, response) {
   send(response, await media.maintenanceImage(request.user, request.params.publicId));
 }
-

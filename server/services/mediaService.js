@@ -1,8 +1,6 @@
-import path from "node:path";
-import { config } from "../config/index.js";
-import { findProductImage } from "../repositories/partnerRepository.js";
-import { findPrintFile } from "../repositories/printRepository.js";
-import { findMaintenanceAttachment } from "../repositories/maintenanceRepository.js";
+import { findProductImage } from "../models/partnerModel.js";
+import { findPrintFile } from "../models/printModel.js";
+import { findMaintenanceAttachment } from "../models/maintenanceModel.js";
 import { forbidden, notFound } from "../utils/AppError.js";
 import { requireMembership } from "./partnerService.js";
 
@@ -10,7 +8,7 @@ export async function productImage(publicIdValue) {
   const image = await findProductImage(publicIdValue);
   if (!image) throw notFound("Image not found");
   return {
-    path: path.join(config.storage.products, image.storage_name),
+    data: image.file_data,
     mimeType: image.mime_type,
     downloadName: image.original_name,
     isPrivate: false,
@@ -28,7 +26,7 @@ export async function printFile(user, publicIdValue) {
     || membership?.vendor_id === file.vendor_id;
   if (!allowed) throw forbidden();
   return {
-    path: path.join(config.storage.printFiles, file.storage_name),
+    data: file.file_data,
     mimeType: "application/pdf",
     downloadName: file.original_name,
     isPrivate: true,
@@ -42,10 +40,9 @@ export async function maintenanceImage(user, publicIdValue) {
     throw forbidden();
   }
   return {
-    path: path.join(config.storage.maintenance, file.storage_name),
+    data: file.file_data,
     mimeType: file.mime_type,
     downloadName: file.original_name,
     isPrivate: true,
   };
 }
-

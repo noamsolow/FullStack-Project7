@@ -32,8 +32,8 @@ No ORM, MongoDB, Redux, Tailwind, JSON Server, FAJAX, or WebSockets are used.
 
 ```text
 client/       React single-page application and responsive design system
-server/       Express routes, middleware, controllers, services, repositories
-database/     MySQL schema, official campus locations, demo catalog, grants
+server/       Express routes, middleware, controllers, services, and models
+database/     MySQL schema, uploaded file bytes, campus data, and grants
 docs/         Architecture, permissions, API contract, and threat model
 postman/      Importable local API collection and environment
 ```
@@ -120,6 +120,10 @@ The Node suite covers file signatures, money conversion, status transitions,
 server-authoritative checkout validation, and password rules. Full transaction,
 ownership, and concurrency verification requires a running MySQL test
 database. Import the Postman artifacts for end-to-end API checks.
+
+Validated product images, print PDFs, and maintenance photos are stored as
+binary data in MySQL. Their names, types, sizes, ownership, and access rules
+remain in the related file tables.
 
 ## Version-one limits
 

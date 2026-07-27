@@ -6,7 +6,7 @@ import {
   listPrintCenters,
   listProductsByVendor,
   listVendors,
-} from "../repositories/catalogRepository.js";
+} from "../models/catalogModel.js";
 import { notFound } from "../utils/AppError.js";
 import { paginated, paginationFrom } from "../utils/pagination.js";
 
@@ -57,4 +57,3 @@ export async function printCenters(query) {
   const rows = await listPrintCenters(paging);
   return paginated(rows, paging.page, paging.limit);
 }
-

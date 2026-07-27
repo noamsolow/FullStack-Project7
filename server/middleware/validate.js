@@ -22,8 +22,16 @@ export function validate(schema, source = "body") {
       return;
     }
 
-    request[source] = value;
+    if (source === "query") {
+      Object.defineProperty(request, "query", {
+        configurable: true,
+        enumerable: true,
+        value,
+        writable: false,
+      });
+    } else {
+      request[source] = value;
+    }
     next();
   };
 }
-

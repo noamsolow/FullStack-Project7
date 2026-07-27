@@ -6,7 +6,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import { authService } from "../../services/authService.js";
+import { authService } from "../../services/auth/authService.js";
 import {
   clearSession,
   readSession,
@@ -24,7 +24,7 @@ export function AuthProvider({ children }) {
     clearSession();
     setUser(null);
     setChecking(false);
-  }, [initial, logout]);
+  }, []);
 
   const acceptSession = useCallback((session) => {
     writeSession(session);

@@ -166,16 +166,15 @@ CREATE TABLE IF NOT EXISTS product_images (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   public_id CHAR(36) NOT NULL,
   product_id BIGINT UNSIGNED NOT NULL,
-  storage_name VARCHAR(100) NOT NULL,
   original_name VARCHAR(255) NOT NULL,
   mime_type VARCHAR(40) NOT NULL,
   size_bytes INT UNSIGNED NOT NULL,
+  file_data MEDIUMBLOB NOT NULL,
   alt_text VARCHAR(180) NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_product_images_product
     FOREIGN KEY (product_id) REFERENCES products(id),
   CONSTRAINT uq_product_images_public_id UNIQUE (public_id),
-  CONSTRAINT uq_product_images_storage UNIQUE (storage_name),
   INDEX idx_product_images_product (product_id, created_at)
 ) ENGINE=InnoDB;
 
@@ -318,18 +317,17 @@ CREATE TABLE IF NOT EXISTS print_files (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   public_id CHAR(36) NOT NULL,
   print_job_id BIGINT UNSIGNED NOT NULL,
-  storage_name VARCHAR(100) NOT NULL,
   original_name VARCHAR(255) NOT NULL,
   mime_type VARCHAR(40) NOT NULL DEFAULT 'application/pdf',
   size_bytes INT UNSIGNED NOT NULL,
+  file_data MEDIUMBLOB NOT NULL,
   sha256 CHAR(64) NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   deleted_at DATETIME NULL,
   CONSTRAINT fk_print_files_job
     FOREIGN KEY (print_job_id) REFERENCES print_jobs(id),
   CONSTRAINT uq_print_files_public_id UNIQUE (public_id),
-  CONSTRAINT uq_print_files_job UNIQUE (print_job_id),
-  CONSTRAINT uq_print_files_storage UNIQUE (storage_name)
+  CONSTRAINT uq_print_files_job UNIQUE (print_job_id)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS print_job_history (
@@ -399,15 +397,14 @@ CREATE TABLE IF NOT EXISTS maintenance_attachments (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   public_id CHAR(36) NOT NULL,
   maintenance_ticket_id BIGINT UNSIGNED NOT NULL,
-  storage_name VARCHAR(100) NOT NULL,
   original_name VARCHAR(255) NOT NULL,
   mime_type VARCHAR(40) NOT NULL,
   size_bytes INT UNSIGNED NOT NULL,
+  file_data MEDIUMBLOB NOT NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_maintenance_attachments_ticket
     FOREIGN KEY (maintenance_ticket_id) REFERENCES maintenance_tickets(id),
   CONSTRAINT uq_maintenance_attachments_public_id UNIQUE (public_id),
-  CONSTRAINT uq_maintenance_attachments_storage UNIQUE (storage_name),
   INDEX idx_maintenance_attachments_ticket (maintenance_ticket_id)
 ) ENGINE=InnoDB;
 
@@ -537,4 +534,3 @@ CREATE TABLE IF NOT EXISTS recommendation_requests (
   CONSTRAINT uq_recommendations_public_id UNIQUE (public_id),
   INDEX idx_recommendations_user (user_id, created_at)
 ) ENGINE=InnoDB;
-

@@ -6,8 +6,6 @@ server/coverage/
 .env
 client/.env
 server/.env
-server/storage/
 *.log
 .DS_Store
 Thumbs.db
-

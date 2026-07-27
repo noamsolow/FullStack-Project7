@@ -1,12 +1,7 @@
-import fs from "node:fs/promises";
 import { createApp } from "./app.js";
 import { config } from "./config/index.js";
 import { assertDatabaseConnection, pool } from "./db/pool.js";
 import { startCleanupTimer } from "./services/cleanupService.js";
-
-for (const directory of Object.values(config.storage)) {
-  await fs.mkdir(directory, { recursive: true });
-}
 
 await assertDatabaseConnection();
 const app = createApp();
@@ -32,4 +27,3 @@ async function shutdown(signal) {
 
 process.on("SIGINT", () => shutdown("SIGINT"));
 process.on("SIGTERM", () => shutdown("SIGTERM"));
-

@@ -2,7 +2,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { config } from "../config/index.js";
 import { withTransaction } from "../db/pool.js";
-import { buildingExists } from "../repositories/catalogRepository.js";
+import { buildingExists } from "../models/catalogModel.js";
 import {
   addVendorMembership,
   createUser,
@@ -11,8 +11,8 @@ import {
   findVendorMembership,
   softDeleteOwnAccount,
   updateOwnProfile,
-} from "../repositories/userRepository.js";
-import { writeAudit } from "../repositories/auditRepository.js";
+} from "../models/userModel.js";
+import { writeAudit } from "../models/auditModel.js";
 import { AppError, conflict } from "../utils/AppError.js";
 import { publicId } from "../utils/identifiers.js";
 

@@ -21,9 +21,9 @@ import {
   restoreOrderStock,
   setOrderStatus,
   setPaymentProcessing,
-} from "../repositories/orderRepository.js";
-import { findDeliveryZone } from "../repositories/catalogRepository.js";
-import { writeAudit } from "../repositories/auditRepository.js";
+} from "../models/orderModel.js";
+import { findDeliveryZone } from "../models/catalogModel.js";
+import { writeAudit } from "../models/auditModel.js";
 import {
   capturePayPalOrder,
   captureSummary,
@@ -474,4 +474,3 @@ export async function expireReservations() {
   }
   return expired.length;
 }
-

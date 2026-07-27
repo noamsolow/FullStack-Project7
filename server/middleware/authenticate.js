@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 import { config } from "../config/index.js";
-import { findSafeUserByPublicId } from "../repositories/userRepository.js";
+import { findSafeUserByPublicId } from "../models/userModel.js";
 import { AppError } from "../utils/AppError.js";
 
 export async function authenticate(request, _response, next) {
@@ -34,4 +34,3 @@ export async function authenticate(request, _response, next) {
     next(new AppError(401, "INVALID_TOKEN", "Your session has expired or is invalid"));
   }
 }
-

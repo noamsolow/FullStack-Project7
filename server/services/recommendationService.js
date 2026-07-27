@@ -1,5 +1,5 @@
-import { listRecommendationCandidates } from "../repositories/catalogRepository.js";
-import { recordRecommendation } from "../repositories/recommendationRepository.js";
+import { listRecommendationCandidates } from "../models/catalogModel.js";
+import { recordRecommendation } from "../models/recommendationModel.js";
 import { requestRecommendations } from "../integrations/openaiClient.js";
 import { publicId } from "../utils/identifiers.js";
 
@@ -77,4 +77,3 @@ export async function recommend(user, input) {
     safetyNotice: "Verify ingredients and allergen information with the vendor before ordering.",
   };
 }
-

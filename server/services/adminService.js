@@ -1,17 +1,17 @@
-import { listAuditLogs, writeAudit } from "../repositories/auditRepository.js";
+import { listAuditLogs, writeAudit } from "../models/auditModel.js";
 import {
   createBuilding,
   listAdminVendors,
   setVendorStatus,
   updateBuilding,
-} from "../repositories/adminRepository.js";
+} from "../models/adminModel.js";
 import {
   listBuildingRows,
-} from "../repositories/catalogRepository.js";
+} from "../models/catalogModel.js";
 import {
   listUsers,
   setUserBlocked,
-} from "../repositories/userRepository.js";
+} from "../models/userModel.js";
 import { AppError, notFound } from "../utils/AppError.js";
 import { paginated, paginationFrom } from "../utils/pagination.js";
 

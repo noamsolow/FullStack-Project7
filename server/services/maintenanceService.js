@@ -1,8 +1,6 @@
-import fs from "node:fs/promises";
-import path from "node:path";
 import { config } from "../config/index.js";
 import { withTransaction } from "../db/pool.js";
-import { buildingExists } from "../repositories/catalogRepository.js";
+import { buildingExists } from "../models/catalogModel.js";
 import {
   addMaintenanceHistory,
   createMaintenanceTicket,
@@ -15,13 +13,12 @@ import {
   listMaintenanceComments,
   listMaintenanceHistory,
   updateMaintenanceTicket,
-} from "../repositories/maintenanceRepository.js";
-import { findSafeUserByPublicId } from "../repositories/userRepository.js";
-import { writeAudit } from "../repositories/auditRepository.js";
+} from "../models/maintenanceModel.js";
+import { findSafeUserByPublicId } from "../models/userModel.js";
+import { writeAudit } from "../models/auditModel.js";
 import { AppError, forbidden, notFound } from "../utils/AppError.js";
 import {
   safeOriginalName,
-  storageName,
   validateImage,
 } from "../utils/files.js";
 import { publicId, referenceNumber } from "../utils/identifiers.js";
@@ -34,60 +31,44 @@ export async function submitMaintenanceTicket(user, input, files, context) {
   }
 
   const preparedFiles = (files ?? []).map((file) => {
-    const extension = validateImage(file);
+    validateImage(file);
     return {
       file,
       publicId: publicId(),
-      storedName: storageName(extension),
     };
   });
 
-  for (const item of preparedFiles) {
-    await fs.writeFile(
-      path.join(config.storage.maintenance, item.storedName),
-      item.file.buffer,
-      { flag: "wx" },
-    );
-  }
-
   const ticketPublicId = publicId();
-  try {
-    await withTransaction(async (connection) => {
-      const ticketId = await createMaintenanceTicket({
-        publicId: ticketPublicId,
-        ticketNumber: referenceNumber("MT"),
-        userId: user.id,
-        buildingId: input.buildingId,
-        locationText: input.locationText,
-        category: input.category,
-        title: input.title,
-        description: input.description,
-        requestedPriority: input.requestedPriority,
-      }, connection);
-      for (const item of preparedFiles) {
-        await insertMaintenanceAttachment({
-          publicId: item.publicId,
-          maintenanceTicketId: ticketId,
-          storageName: item.storedName,
-          originalName: safeOriginalName(item.file.originalname),
-          mimeType: item.file.mimetype,
-          sizeBytes: item.file.size,
-        }, connection);
-      }
-      await addMaintenanceHistory({
+  await withTransaction(async (connection) => {
+    const ticketId = await createMaintenanceTicket({
+      publicId: ticketPublicId,
+      ticketNumber: referenceNumber("MT"),
+      userId: user.id,
+      buildingId: input.buildingId,
+      locationText: input.locationText,
+      category: input.category,
+      title: input.title,
+      description: input.description,
+      requestedPriority: input.requestedPriority,
+    }, connection);
+    for (const item of preparedFiles) {
+      await insertMaintenanceAttachment({
+        publicId: item.publicId,
         maintenanceTicketId: ticketId,
-        actorUserId: user.id,
-        eventType: "status",
-        toValue: "open",
-        note: "Ticket submitted",
+        originalName: safeOriginalName(item.file.originalname),
+        mimeType: item.file.mimetype,
+        sizeBytes: item.file.size,
+        fileData: item.file.buffer,
       }, connection);
-    });
-  } catch (error) {
-    await Promise.all(preparedFiles.map((item) => fs.unlink(
-      path.join(config.storage.maintenance, item.storedName),
-    ).catch(() => {})));
-    throw error;
-  }
+    }
+    await addMaintenanceHistory({
+      maintenanceTicketId: ticketId,
+      actorUserId: user.id,
+      eventType: "status",
+      toValue: "open",
+      note: "Ticket submitted",
+    }, connection);
+  });
 
   await writeAudit({
     actorUserId: user.id,

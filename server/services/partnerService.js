@@ -1,8 +1,5 @@
-import fs from "node:fs/promises";
-import path from "node:path";
-import { config } from "../config/index.js";
 import { pool } from "../db/pool.js";
-import { findActiveUserById, findVendorMembership } from "../repositories/userRepository.js";
+import { findActiveUserById, findVendorMembership } from "../models/userModel.js";
 import {
   createProduct,
   findCategoryBySlug,
@@ -13,13 +10,13 @@ import {
   updateProduct,
   updateVendorProfile,
   upsertDeliveryZone,
-} from "../repositories/partnerRepository.js";
+} from "../models/partnerModel.js";
 import {
   buildingExists,
   findVendorByPublicId,
   listDeliveryZones,
-} from "../repositories/catalogRepository.js";
-import { writeAudit } from "../repositories/auditRepository.js";
+} from "../models/catalogModel.js";
+import { writeAudit } from "../models/auditModel.js";
 import { AppError, notFound } from "../utils/AppError.js";
 import {
   publicId,
@@ -27,7 +24,6 @@ import {
 import { paginated, paginationFrom } from "../utils/pagination.js";
 import {
   safeOriginalName,
-  storageName,
   validateImage,
 } from "../utils/files.js";
 
@@ -137,25 +133,17 @@ export async function uploadProductImage(user, productPublicId, file, input, con
   const product = await findPartnerProduct(productPublicId, membership.vendor_id);
   if (!product) throw notFound("Product not found");
 
-  const extension = validateImage(file);
+  validateImage(file);
   const imagePublicId = publicId();
-  const storedName = storageName(extension);
-  const target = path.join(config.storage.products, storedName);
-  await fs.writeFile(target, file.buffer, { flag: "wx" });
-  try {
-    await insertProductImage({
-      publicId: imagePublicId,
-      productId: product.id,
-      storageName: storedName,
-      originalName: safeOriginalName(file.originalname),
-      mimeType: file.mimetype,
-      sizeBytes: file.size,
-      altText: input.altText,
-    });
-  } catch (error) {
-    await fs.unlink(target).catch(() => {});
-    throw error;
-  }
+  await insertProductImage({
+    publicId: imagePublicId,
+    productId: product.id,
+    originalName: safeOriginalName(file.originalname),
+    mimeType: file.mimetype,
+    sizeBytes: file.size,
+    fileData: file.buffer,
+    altText: input.altText,
+  });
 
   await writeAudit({
     actorUserId: user.id,
@@ -199,4 +187,3 @@ export async function ensureAdminUser(publicIdValue) {
   if (!rows[0]) throw new AppError(400, "INVALID_ADMIN", "Select an active administrator");
   return findActiveUserById(rows[0].id);
 }
-

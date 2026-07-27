@@ -1,9 +1,3 @@
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
-const currentFile = fileURLToPath(import.meta.url);
-const serverRoot = path.resolve(path.dirname(currentFile), "..");
-
 function required(name, fallback) {
   const value = process.env[name] ?? fallback;
   if (value === undefined || value === "") {
@@ -77,11 +71,5 @@ export const config = Object.freeze({
     apiKey: process.env.OPENAI_API_KEY ?? "",
     model: required("OPENAI_MODEL", "gpt-5.6-luna"),
     timeoutMs: integer("OPENAI_TIMEOUT_MS", 12000, 1000),
-  },
-  storage: {
-    root: path.join(serverRoot, "storage"),
-    products: path.join(serverRoot, "storage", "products"),
-    printFiles: path.join(serverRoot, "storage", "print-files"),
-    maintenance: path.join(serverRoot, "storage", "maintenance"),
   },
 });
