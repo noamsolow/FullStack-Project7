@@ -1,0 +1,60 @@
+import {
+  findVendorBySlug,
+  listBuildings,
+  listCategories,
+  listDeliveryZones,
+  listPrintCenters,
+  listProductsByVendor,
+  listVendors,
+} from "../repositories/catalogRepository.js";
+import { notFound } from "../utils/AppError.js";
+import { paginated, paginationFrom } from "../utils/pagination.js";
+
+export async function buildings(query) {
+  const paging = paginationFrom(query);
+  const rows = await listBuildings(paging);
+  return paginated(rows, paging.page, paging.limit);
+}
+
+export async function categories(query) {
+  return { data: await listCategories(query.group), meta: {} };
+}
+
+export async function vendors(query) {
+  const paging = paginationFrom(query);
+  const rows = await listVendors({ ...paging, ...query });
+  return paginated(rows, paging.page, paging.limit);
+}
+
+export async function vendorDetails(slug) {
+  const vendor = await findVendorBySlug(slug);
+  if (!vendor) throw notFound("Vendor not found");
+  const [zones, categoryRows] = await Promise.all([
+    vendor.delivery_enabled ? listDeliveryZones(vendor.id) : [],
+    listCategories(),
+  ]);
+  delete vendor.id;
+  return { ...vendor, deliveryZones: zones, categories: categoryRows };
+}
+
+export async function vendorProducts(slug, query) {
+  const vendor = await findVendorBySlug(slug);
+  if (!vendor) throw notFound("Vendor not found");
+  const paging = paginationFrom(query);
+  const rows = await listProductsByVendor(vendor.id, { ...paging, ...query });
+  const result = paginated(rows, paging.page, paging.limit);
+  result.meta.vendor = {
+    publicId: vendor.public_id,
+    name: vendor.name,
+    slug: vendor.slug,
+    type: vendor.vendor_type,
+  };
+  return result;
+}
+
+export async function printCenters(query) {
+  const paging = paginationFrom(query);
+  const rows = await listPrintCenters(paging);
+  return paginated(rows, paging.page, paging.limit);
+}
+
