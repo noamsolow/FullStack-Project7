@@ -22,7 +22,7 @@ export async function listBuildings({ fetchLimit, offset }, executor = pool) {
     `SELECT id, campus_code, name, short_name, description, delivery_hint
      FROM buildings
      WHERE is_active = TRUE
-     ORDER BY CAST(campus_code AS UNSIGNED), name
+     ORDER BY CAST(campus_code AS UNSIGNED), campus_code, name
      LIMIT ? OFFSET ?`,
     [fetchLimit, offset],
   );
@@ -33,7 +33,7 @@ export async function listBuildingRows(executor = pool) {
   const [rows] = await executor.query(
     `SELECT id, campus_code, name, short_name, description, delivery_hint, is_active
      FROM buildings
-     ORDER BY CAST(campus_code AS UNSIGNED), name`,
+     ORDER BY CAST(campus_code AS UNSIGNED), campus_code, name`,
   );
   return rows;
 }
@@ -84,7 +84,7 @@ export async function listVendors(filters, executor = pool) {
     where.push("v.vendor_type IN ('food_court', 'vending_machine')");
   }
   if (filters.group === "shop") {
-    where.push("v.vendor_type IN ('campus_shop', 'vending_machine')");
+    where.push("v.vendor_type IN ('campus_shop', 'vending_machine', 'print_center')");
   }
   if (filters.query) {
     where.push("(v.name LIKE ? OR v.description LIKE ?)");
@@ -98,7 +98,7 @@ export async function listVendors(filters, executor = pool) {
       v.public_id, v.name, v.slug, v.vendor_type, v.description,
       v.pickup_enabled, v.delivery_enabled, v.is_open,
       v.estimated_min_minutes, v.estimated_max_minutes,
-      b.id AS building_id, b.short_name AS building_name,
+      b.id AS building_id, b.campus_code, b.short_name AS building_name,
       (
         SELECT pi.public_id
         FROM products p
@@ -253,12 +253,16 @@ export async function listDeliveryZones(vendorId, executor = pool) {
   const [rows] = await executor.query(
     `SELECT
       dz.id, b.id AS building_id, b.campus_code, b.short_name AS building_name,
+      v.building_id AS vendor_building_id,
+      source.campus_code AS source_campus_code,
       dz.fee_agorot, dz.minimum_order_agorot,
       dz.eta_min_minutes, dz.eta_max_minutes, dz.is_active
      FROM vendor_delivery_zones dz
+     JOIN vendors v ON v.id = dz.vendor_id
+     JOIN buildings source ON source.id = v.building_id
      JOIN buildings b ON b.id = dz.building_id
      WHERE dz.vendor_id = ? AND b.is_active = TRUE
-     ORDER BY CAST(b.campus_code AS UNSIGNED)`,
+     ORDER BY CAST(b.campus_code AS UNSIGNED), b.campus_code`,
     [vendorId],
   );
   return rows;
@@ -266,8 +270,12 @@ export async function listDeliveryZones(vendorId, executor = pool) {
 
 export async function findDeliveryZone(vendorId, buildingId, executor = pool) {
   const [rows] = await executor.query(
-    `SELECT dz.*, b.short_name AS building_name
+    `SELECT dz.*, b.short_name AS building_name,
+       b.campus_code, v.building_id AS vendor_building_id,
+       source.campus_code AS source_campus_code
      FROM vendor_delivery_zones dz
+     JOIN vendors v ON v.id = dz.vendor_id
+     JOIN buildings source ON source.id = v.building_id
      JOIN buildings b ON b.id = dz.building_id
      WHERE dz.vendor_id = ? AND dz.building_id = ?
        AND dz.is_active = TRUE AND b.is_active = TRUE

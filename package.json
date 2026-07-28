@@ -9,8 +9,7 @@
     "dev:client": "npm --prefix client run dev",
     "start": "npm --prefix server start",
     "build": "npm --prefix client run build",
-    "lint": "npm --prefix server run lint && npm --prefix client run lint",
-    "test": "npm --prefix server test"
+    "lint": "npm --prefix server run lint && npm --prefix client run lint"
   }
 }
 

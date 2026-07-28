@@ -4,8 +4,8 @@
 
 The browser, uploaded files, route identifiers, prices, product availability,
 delivery fees, LLM output, and payment return parameters are untrusted. MySQL
-data validated inside a transaction and verified PayPal responses are the
-authoritative sources.
+data validated inside a transaction is the authoritative source. The PayPal
+adapter exists but online payment is currently disabled.
 
 ## Controls
 
@@ -33,9 +33,9 @@ never grant access to another order, print job, document, ticket, or image.
 ## Payments
 
 The client submits product IDs and quantities, not prices. The order service
-locks product rows, recalculates totals, reserves stock, and then creates the
-PayPal order. Capture verifies the stored provider order ID, final amount,
-currency, state, and owner. Card data is handled only by PayPal.
+locks product rows, recalculates totals and delivery fees, updates tracked
+stock, and places the order in one transaction. Online payment is currently
+disabled, so no card or PayPal data is collected.
 
 ## Uploads
 

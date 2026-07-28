@@ -2,6 +2,7 @@ import {
   currentUser,
   deleteProfile,
   login,
+  recordLogout,
   registerCustomer,
   registerPartner,
   updateProfile,
@@ -34,6 +35,11 @@ export const adminLoginHandler = loginHandler("admin");
 
 export async function meHandler(request, response) {
   response.json({ data: await currentUser(request.user) });
+}
+
+export async function logoutHandler(request, response) {
+  await recordLogout(request.user, context(request));
+  response.status(204).end();
 }
 
 export async function updateMeHandler(request, response) {

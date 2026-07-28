@@ -43,8 +43,9 @@ export async function createOrder(data, executor) {
     `INSERT INTO orders (
       public_id, order_number, user_id, vendor_id, fulfillment_type,
       delivery_building_id, delivery_location, subtotal_agorot,
-      delivery_fee_agorot, total_agorot, pickup_code, reservation_expires_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      delivery_fee_agorot, total_agorot, status, pickup_code,
+      reservation_expires_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.publicId,
       data.orderNumber,
@@ -56,8 +57,9 @@ export async function createOrder(data, executor) {
       data.subtotalAgorot,
       data.deliveryFeeAgorot,
       data.totalAgorot,
+      data.status,
       data.pickupCode,
-      data.reservationExpiresAt,
+      data.reservationExpiresAt ?? null,
     ],
   );
   return result.insertId;
@@ -220,6 +222,65 @@ export async function listVendorOrders(vendorId, { fetchLimit, offset, status },
      ORDER BY o.created_at DESC
      LIMIT ? OFFSET ?`,
     params,
+  );
+  return rows;
+}
+
+export async function listAdminOrders(
+  { fetchLimit, offset, status, search },
+  executor = pool,
+) {
+  const where = [];
+  const params = [];
+  if (status) {
+    where.push("o.status = ?");
+    params.push(status);
+  }
+  if (search) {
+    where.push(`(
+      o.order_number LIKE ?
+      OR u.display_name LIKE ?
+      OR u.email LIKE ?
+      OR v.name LIKE ?
+    )`);
+    const term = `%${search}%`;
+    params.push(term, term, term, term);
+  }
+  params.push(fetchLimit, offset);
+  const [rows] = await executor.query(
+    `SELECT
+      o.id, o.public_id, o.order_number, o.fulfillment_type,
+      o.delivery_location, o.subtotal_agorot, o.delivery_fee_agorot,
+      o.total_agorot, o.currency, o.status, o.pickup_code,
+      o.completed_at, o.cancelled_at, o.created_at, o.updated_at,
+      u.public_id AS customer_public_id, u.display_name AS customer_name,
+      u.email AS customer_email,
+      v.public_id AS vendor_public_id, v.name AS vendor_name,
+      v.vendor_type, b.short_name AS delivery_building_name
+     FROM orders o
+     JOIN users u ON u.id = o.user_id
+     JOIN vendors v ON v.id = o.vendor_id
+     LEFT JOIN buildings b ON b.id = o.delivery_building_id
+     ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
+     ORDER BY o.created_at DESC
+     LIMIT ? OFFSET ?`,
+    params,
+  );
+  return rows;
+}
+
+export async function listOrderHistoriesByOrderIds(orderIds, executor = pool) {
+  if (!orderIds.length) return [];
+  const placeholders = orderIds.map(() => "?").join(", ");
+  const [rows] = await executor.query(
+    `SELECT
+      h.order_id, h.from_status, h.to_status, h.note, h.created_at,
+      u.display_name AS actor_name
+     FROM order_status_history h
+     LEFT JOIN users u ON u.id = h.actor_user_id
+     WHERE h.order_id IN (${placeholders})
+     ORDER BY h.order_id, h.created_at`,
+    orderIds,
   );
   return rows;
 }

@@ -1,9 +1,10 @@
 export const orderTransitions = Object.freeze({
-  placed: ["accepted", "cancellation_requested", "needs_attention"],
+  placed: ["preparing", "needs_attention"],
+  // Existing accepted orders can still join the simplified flow.
   accepted: ["preparing", "needs_attention"],
-  preparing: ["ready", "needs_attention"],
-  ready: ["completed", "out_for_delivery", "needs_attention"],
-  out_for_delivery: ["completed", "needs_attention"],
+  preparing: ["ready", "out_for_delivery", "needs_attention"],
+  // Delivery orders that reached ready in the previous flow can continue.
+  ready: ["out_for_delivery"],
 });
 
 export const printTransitions = Object.freeze({

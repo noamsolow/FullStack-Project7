@@ -15,7 +15,7 @@ export function PublicLayout() {
           <LevGoLogo compact />
           <p>Campus, handled. Built for Lev Campus.</p>
         </div>
-        <p>Food, supplies, printing, and campus support in one secure place.</p>
+        <p>Food, office, and maintenance services in one secure place.</p>
       </footer>
       <MobileNav />
     </div>

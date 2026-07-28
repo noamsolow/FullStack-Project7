@@ -210,6 +210,17 @@ export async function currentUser(user) {
   return safeUser(user, membership);
 }
 
+export async function recordLogout(user, context) {
+  await writeAudit({
+    actorUserId: user.id,
+    action: "auth.logout",
+    resourceType: "user",
+    resourcePublicId: user.public_id,
+    requestId: context.requestId,
+    ip: context.ip,
+  });
+}
+
 export async function updateProfile(user, input) {
   const updated = await updateOwnProfile(user.id, input);
   return safeUser(updated, user.role === "vendor_manager"

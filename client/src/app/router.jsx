@@ -6,13 +6,13 @@ import { AccountPage } from "../pages/account/AccountPage.jsx";
 import { AdminAuditPage } from "../pages/admin/AdminAuditPage.jsx";
 import { AdminDashboardPage } from "../pages/admin/AdminDashboardPage.jsx";
 import { AdminMaintenancePage } from "../pages/admin/AdminMaintenancePage.jsx";
+import { AdminOrdersPage } from "../pages/admin/AdminOrdersPage.jsx";
 import { AdminUsersPage } from "../pages/admin/AdminUsersPage.jsx";
 import { AdminVendorsPage } from "../pages/admin/AdminVendorsPage.jsx";
 import { AuthPage } from "../pages/auth/AuthPage.jsx";
 import { DiscoverPage } from "../pages/commerce/catalog/DiscoverPage.jsx";
 import { VendorPage } from "../pages/commerce/catalog/VendorPage.jsx";
 import { CartPage } from "../pages/commerce/checkout/CartPage.jsx";
-import { PaymentReturnPage } from "../pages/commerce/checkout/PaymentReturnPage.jsx";
 import { OrderDetailPage } from "../pages/commerce/orders/OrderDetailPage.jsx";
 import { OrdersPage } from "../pages/commerce/orders/OrdersPage.jsx";
 import { RecommendationPage } from "../pages/commerce/recommendations/RecommendationPage.jsx";
@@ -28,6 +28,7 @@ import { PrintJobsPage } from "../pages/printing/PrintJobsPage.jsx";
 import { PrintPage } from "../pages/printing/PrintPage.jsx";
 import { HomePage } from "../pages/public/HomePage.jsx";
 import { NotFoundPage } from "../pages/public/NotFoundPage.jsx";
+import { ServicesPage } from "../pages/public/ServicesPage.jsx";
 import { GuestOnly, RequireAuth } from "./routeGuards.jsx";
 
 const customer = (element) => <RequireAuth>{element}</RequireAuth>;
@@ -37,6 +38,7 @@ export const router = createBrowserRouter([
     element: <PublicLayout />,
     children: [
       { path: "/", element: <HomePage /> },
+      { path: "/services", element: <ServicesPage /> },
       { path: "/eat", element: <DiscoverPage group="eat" /> },
       { path: "/shop", element: <DiscoverPage group="shop" /> },
       { path: "/vendors/:slug", element: <VendorPage /> },
@@ -50,8 +52,6 @@ export const router = createBrowserRouter([
       { path: "/orders", element: customer(<OrdersPage />) },
       { path: "/orders/:publicId", element: customer(<OrderDetailPage />) },
       { path: "/account", element: customer(<AccountPage />) },
-      { path: "/payment/return", element: customer(<PaymentReturnPage />) },
-      { path: "/payment/cancel", element: customer(<PaymentReturnPage cancelled />) },
       { path: "*", element: <NotFoundPage /> },
     ],
   },
@@ -91,6 +91,7 @@ export const router = createBrowserRouter([
     element: <RequireAuth role="admin"><AdminLayout /></RequireAuth>,
     children: [
       { index: true, element: <AdminDashboardPage /> },
+      { path: "orders", element: <AdminOrdersPage /> },
       { path: "maintenance", element: <AdminMaintenancePage /> },
       { path: "users", element: <AdminUsersPage /> },
       { path: "vendors", element: <AdminVendorsPage /> },

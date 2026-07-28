@@ -1,4 +1,5 @@
 import { withTransaction } from "../db/pool.js";
+import { config } from "../config/index.js";
 import {
   addOrderHistory,
   attachProviderOrder,
@@ -13,7 +14,9 @@ import {
   findPaymentForOrder,
   insertOrderItems,
   listCustomerOrders,
+  listAdminOrders,
   listOrderHistory,
+  listOrderHistoriesByOrderIds,
   listOrderItems,
   listVendorOrders,
   lockProductsByPublicIds,
@@ -38,6 +41,7 @@ import {
 } from "../utils/identifiers.js";
 import { payPalToAgorot } from "../utils/money.js";
 import { paginated, paginationFrom } from "../utils/pagination.js";
+import { calculateDeliveryFeeAgorot } from "../utils/deliveryPricing.js";
 import { canTransition, orderTransitions } from "../utils/statusRules.js";
 import { requireMembership } from "./partnerService.js";
 
@@ -125,21 +129,11 @@ async function createStoredOrder(user, input) {
       if (!zone) {
         throw new AppError(400, "DELIVERY_ZONE_UNAVAILABLE", "The vendor does not deliver there");
       }
-      if (subtotalAgorot < zone.minimum_order_agorot) {
-        throw new AppError(
-          409,
-          "DELIVERY_MINIMUM_NOT_MET",
-          `This delivery requires at least ₪${(zone.minimum_order_agorot / 100).toFixed(2)}`,
-        );
-      }
-      deliveryFeeAgorot = zone.fee_agorot;
+      deliveryFeeAgorot = calculateDeliveryFeeAgorot(zone);
       deliveryBuildingId = zone.building_id;
     }
 
     const totalAgorot = subtotalAgorot + deliveryFeeAgorot;
-    if (totalAgorot > 200000) {
-      throw new AppError(400, "ORDER_TOTAL_LIMIT", "The maximum order total is ₪2,000");
-    }
 
     for (const item of preparedItems.filter((value) => value.trackedStock)) {
       if (!(await decrementStock(item.productId, item.quantity, connection))) {
@@ -161,21 +155,28 @@ async function createStoredOrder(user, input) {
       subtotalAgorot,
       deliveryFeeAgorot,
       totalAgorot,
+      status: config.paypal.enabled ? "pending_payment" : "placed",
       pickupCode: shortCode(),
-      reservationExpiresAt: new Date(Date.now() + 20 * 60 * 1000),
+      reservationExpiresAt: config.paypal.enabled
+        ? new Date(Date.now() + 20 * 60 * 1000)
+        : null,
     }, connection);
     await insertOrderItems(orderId, preparedItems, connection);
     await addOrderHistory({
       orderId,
       actorUserId: user.id,
-      toStatus: "pending_payment",
-      note: "Stock reserved for 20 minutes",
+      toStatus: config.paypal.enabled ? "pending_payment" : "placed",
+      note: config.paypal.enabled
+        ? "Stock reserved for 20 minutes"
+        : "Order placed without online payment",
     }, connection);
-    const paymentId = await createOrderPayment({
-      publicId: publicId(),
-      orderId,
-      amountAgorot: totalAgorot,
-    }, connection);
+    const paymentId = config.paypal.enabled
+      ? await createOrderPayment({
+        publicId: publicId(),
+        orderId,
+        amountAgorot: totalAgorot,
+      }, connection)
+      : null;
 
     return {
       orderId,
@@ -205,6 +206,23 @@ async function compensateCheckout(order, code) {
 
 export async function checkout(user, input, context) {
   const stored = await createStoredOrder(user, input);
+  if (!config.paypal.enabled) {
+    await writeAudit({
+      actorUserId: user.id,
+      action: "order.place_without_payment",
+      resourceType: "order",
+      resourcePublicId: stored.orderPublicId,
+      requestId: context.requestId,
+    });
+    return {
+      orderPublicId: stored.orderPublicId,
+      amountAgorot: stored.amountAgorot,
+      currency: "ILS",
+      status: "placed",
+      paymentRequired: false,
+    };
+  }
+
   let paypal;
   try {
     paypal = await createPayPalOrder({
@@ -232,6 +250,7 @@ export async function checkout(user, input, context) {
     amountAgorot: stored.amountAgorot,
     currency: "ILS",
     reservationMinutes: 20,
+    paymentRequired: true,
   };
 }
 
@@ -254,6 +273,9 @@ function verifyCaptured(summary, payment) {
 }
 
 export async function captureOrderPayment(user, orderPublicId, input, context) {
+  if (!config.paypal.enabled) {
+    throw new AppError(409, "PAYMENTS_DISABLED", "Online payments are currently disabled");
+  }
   const initial = await withTransaction(async (connection) => {
     const order = await findOrderByPublicId(orderPublicId, connection, true);
     if (!order) throw notFound("Order not found");
@@ -369,6 +391,27 @@ export async function partnerOrders(user, query) {
   return paginated(rows, paging.page, paging.limit);
 }
 
+export async function adminOrderLogs(query) {
+  const paging = paginationFrom(query);
+  const rows = await listAdminOrders({ ...paging, ...query });
+  const histories = await listOrderHistoriesByOrderIds(rows.map((order) => order.id));
+  const historyByOrder = new Map();
+  for (const event of histories) {
+    const events = historyByOrder.get(event.order_id) ?? [];
+    const publicEvent = { ...event };
+    delete publicEvent.order_id;
+    events.push(publicEvent);
+    historyByOrder.set(event.order_id, events);
+  }
+  const result = rows.map((order) => {
+    const history = historyByOrder.get(order.id) ?? [];
+    const publicOrder = { ...order };
+    delete publicOrder.id;
+    return { ...publicOrder, history };
+  });
+  return paginated(result, paging.page, paging.limit);
+}
+
 export async function updatePartnerOrder(user, publicIdValue, input, context) {
   const membership = await requireMembership(user.id);
   const updated = await withTransaction(async (connection) => {
@@ -379,6 +422,9 @@ export async function updatePartnerOrder(user, publicIdValue, input, context) {
     }
     if (input.status === "out_for_delivery" && order.fulfillment_type !== "delivery") {
       throw new AppError(400, "PICKUP_ORDER", "Pickup orders cannot be sent for delivery");
+    }
+    if (input.status === "ready" && order.fulfillment_type !== "pickup") {
+      throw new AppError(400, "DELIVERY_ORDER", "Delivery orders must be marked as out for delivery");
     }
     await setOrderStatus(order.id, input.status, connection);
     await addOrderHistory({
@@ -399,6 +445,50 @@ export async function updatePartnerOrder(user, publicIdValue, input, context) {
     summary: `${updated.status} -> ${input.status}`,
     requestId: context.requestId,
   });
+  return orderDetails(user, publicIdValue);
+}
+
+export async function completeCustomerOrder(user, publicIdValue, context) {
+  const result = await withTransaction(async (connection) => {
+    const order = await findOrderByPublicId(publicIdValue, connection, true);
+    if (!order) throw notFound("Order not found");
+    if (order.user_id !== user.id) throw forbidden();
+    if (order.status === "completed") return { alreadyCompleted: true };
+
+    const confirmableStatus = order.fulfillment_type === "delivery"
+      ? "out_for_delivery"
+      : "ready";
+    if (order.status !== confirmableStatus) {
+      throw conflict(
+        order.fulfillment_type === "delivery"
+          ? "This delivery cannot be confirmed before it is on the way"
+          : "This pickup cannot be confirmed before it is ready",
+        "ORDER_NOT_CONFIRMABLE",
+      );
+    }
+
+    await setOrderStatus(order.id, "completed", connection);
+    await addOrderHistory({
+      orderId: order.id,
+      actorUserId: user.id,
+      fromStatus: order.status,
+      toStatus: "completed",
+      note: order.fulfillment_type === "delivery"
+        ? "Customer confirmed delivery"
+        : "Customer confirmed pickup",
+    }, connection);
+    return { alreadyCompleted: false };
+  });
+
+  if (!result.alreadyCompleted) {
+    await writeAudit({
+      actorUserId: user.id,
+      action: "order.customer_complete",
+      resourceType: "order",
+      resourcePublicId: publicIdValue,
+      requestId: context.requestId,
+    });
+  }
   return orderDetails(user, publicIdValue);
 }
 

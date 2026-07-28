@@ -25,7 +25,9 @@ React page
   -> MySQL
 ```
 
-Services also call provider adapters for PayPal and OpenAI. Controllers never
+Services can call provider adapters for PayPal and OpenAI. PayPal is currently
+disabled by configuration, so orders are placed without an online payment.
+Controllers never
 run SQL, models never produce HTTP responses, and route files contain no
 business rules.
 
@@ -78,8 +80,8 @@ client/src/
 - The server recalculates product prices, delivery fees, print quotes, and
   totals.
 - PayPal credentials and OAuth tokens never reach the browser.
-- Payment capture is idempotent and a successful provider result is reconciled
-  against the stored amount and currency.
+- Online payment is currently disabled. Catalog prices, delivery fees, print
+  quotes, and totals remain server-authoritative.
 - Version 1 records paid cancellation requests but performs no automatic
   refund.
 

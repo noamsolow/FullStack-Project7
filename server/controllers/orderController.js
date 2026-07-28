@@ -40,3 +40,12 @@ export async function cancelHandler(request, response) {
   });
 }
 
+export async function completeHandler(request, response) {
+  response.json({
+    data: await orders.completeCustomerOrder(
+      request.user,
+      request.params.publicId,
+      context(request),
+    ),
+  });
+}

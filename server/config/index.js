@@ -49,12 +49,13 @@ export const config = Object.freeze({
   db: {
     host: required("DB_HOST", "127.0.0.1"),
     port: integer("DB_PORT", 3306, 1),
-    database: required("DB_NAME", "levgo"),
+    database: required("DB_NAME", "project7"),
     user: required("DB_USER", "levgo_app"),
     password: required("DB_PASSWORD", nodeEnv === "test" ? "test" : undefined),
     connectionLimit: integer("DB_CONNECTION_LIMIT", 10, 1),
   },
   paypal: {
+    enabled: (process.env.PAYMENTS_ENABLED ?? "false").toLowerCase() === "true",
     environment: process.env.PAYPAL_ENV === "live" ? "live" : "sandbox",
     clientId: process.env.PAYPAL_CLIENT_ID ?? "",
     clientSecret: process.env.PAYPAL_CLIENT_SECRET ?? "",

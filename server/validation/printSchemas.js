@@ -1,8 +1,8 @@
 import Joi from "joi";
-import { pagination } from "./common.js";
+import { pagination, publicId } from "./common.js";
 
 export const submitPrintSchema = Joi.object({
-  vendorPublicId: Joi.string().guid({ version: ["uuidv4"] }).required(),
+  vendorPublicId: publicId.required(),
   paperSize: Joi.string().valid("A4", "A3").required(),
   colorMode: Joi.string().valid("black_white", "color").required(),
   sides: Joi.string().valid("single", "double").required(),

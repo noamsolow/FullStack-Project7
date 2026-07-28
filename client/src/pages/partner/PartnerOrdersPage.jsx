@@ -4,15 +4,23 @@ import { EmptyState, ErrorState, LoadingState } from "../../components/ui/PageSt
 import { StatusChip } from "../../components/ui/StatusChip.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { partnerService } from "../../services/portals/partnerService.js";
-import { formatDate, formatMoney, titleCase } from "../../utils/format.js";
+import { formatDate, formatMoney, orderStatusLabel, titleCase } from "../../utils/format.js";
 
-const nextStatuses = {
-  placed: ["accepted", "needs_attention"],
-  accepted: ["preparing", "needs_attention"],
-  preparing: ["ready", "needs_attention"],
-  ready: ["completed", "out_for_delivery", "needs_attention"],
-  out_for_delivery: ["completed", "needs_attention"],
-};
+function nextStatuses(order) {
+  if (["placed", "accepted"].includes(order.status)) {
+    return ["preparing", "needs_attention"];
+  }
+  if (order.status === "preparing") {
+    return [
+      order.fulfillment_type === "delivery" ? "out_for_delivery" : "ready",
+      "needs_attention",
+    ];
+  }
+  if (order.status === "ready" && order.fulfillment_type === "delivery") {
+    return ["out_for_delivery"];
+  }
+  return [];
+}
 
 export function PartnerOrdersPage() {
   const [selected, setSelected] = useState(null);
@@ -21,7 +29,7 @@ export function PartnerOrdersPage() {
   const orders = data?.data ?? [];
   return (
     <div className="portal-page">
-      <PageHeader eyebrow="Operations" title="Orders" description="Accept, prepare, and complete customer orders." />
+      <PageHeader eyebrow="Operations" title="Orders" description="Move orders into progress, then mark them ready for pickup or on the way." />
       {loading && <LoadingState />}
       {error && <ErrorState error={error} onRetry={reload} />}
       {!loading && !error && !orders.length && <EmptyState icon="orders" title="No orders yet" message="Paid customer orders will appear here." />}
@@ -53,6 +61,7 @@ function OrderManager({ publicId, onClose, onSaved }) {
   const [actionError, setActionError] = useState(null);
   const [busy, setBusy] = useState(false);
   const order = data?.data;
+  const availableStatuses = order ? nextStatuses(order) : [];
 
   async function update(event) {
     event.preventDefault();
@@ -78,14 +87,14 @@ function OrderManager({ publicId, onClose, onSaved }) {
           <div className="record-summary"><span><strong>{order.order_number}</strong><small>{order.customer_name}</small></span><StatusChip status={order.status} /></div>
           <div className="line-items">{order.items.map((item) => <div key={item.product_public_id}><span><strong>{item.quantity}× {item.product_name}</strong><small>{item.sku}</small></span><strong>{formatMoney(item.line_total_agorot)}</strong></div>)}</div>
           {order.pickup_code && <div className="pickup-code-inline"><span>Customer code</span><strong>{order.pickup_code}</strong></div>}
-          {nextStatuses[order.status]?.length ? (
+          {availableStatuses.length ? (
             <form onSubmit={update}>
-              <label>Next status<select value={status} onChange={(event) => setStatus(event.target.value)} required><option value="">Choose an action</option>{nextStatuses[order.status].filter((value) => value !== "out_for_delivery" || order.fulfillment_type === "delivery").map((value) => <option key={value} value={value}>{titleCase(value)}</option>)}</select></label>
+              <label>Next status<select value={status} onChange={(event) => setStatus(event.target.value)} required><option value="">Choose an action</option>{availableStatuses.map((value) => <option key={value} value={value}>{orderStatusLabel(value)}</option>)}</select></label>
               <label>Internal progress note <span className="optional">Optional</span><textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} /></label>
               {actionError && <ErrorState error={actionError} />}
               <button className="button button--primary button--full" disabled={busy}>{busy ? "Updating..." : "Update order"}</button>
             </form>
-          ) : <p className="muted">No online transition is available from this status.</p>}
+          ) : <p className="muted">{["ready", "out_for_delivery"].includes(order.status) ? "Waiting for the customer to confirm receipt." : "No online transition is available from this status."}</p>}
         </>}
       </section>
     </div>

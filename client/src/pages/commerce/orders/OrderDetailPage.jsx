@@ -1,12 +1,13 @@
 import { useCallback, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { ConfirmDialog } from "../../../components/ui/ConfirmDialog.jsx";
 import { Icon } from "../../../components/ui/Icon.jsx";
 import { ErrorState, LoadingState } from "../../../components/ui/PageState.jsx";
 import { StatusChip } from "../../../components/ui/StatusChip.jsx";
 import { useApiResource } from "../../../hooks/useApiResource.js";
 import { usePolling } from "../../../hooks/usePolling.js";
 import { orderService } from "../../../services/commerce/orderService.js";
-import { formatDate, formatMoney, titleCase } from "../../../utils/format.js";
+import { formatDate, formatMoney, orderStatusLabel, titleCase } from "../../../utils/format.js";
 
 const terminal = new Set(["completed", "cancelled", "needs_attention"]);
 
@@ -17,6 +18,7 @@ export function OrderDetailPage() {
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState(null);
+  const [confirmingReceipt, setConfirmingReceipt] = useState(false);
   const order = data?.data;
 
   usePolling(reload, 15_000, Boolean(order && !terminal.has(order.status)));
@@ -36,10 +38,30 @@ export function OrderDetailPage() {
     }
   }
 
+  async function complete() {
+    setBusy(true);
+    setActionError(null);
+    try {
+      await orderService.complete(publicId);
+      setConfirmingReceipt(false);
+      await reload();
+    } catch (caught) {
+      setActionError(caught);
+      setConfirmingReceipt(false);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (loading && !order) return <LoadingState label="Loading order..." />;
   if (error && !order) return <ErrorState error={error} onRetry={reload} />;
 
   const canCancel = ["pending_payment", "placed"].includes(order.status);
+  const canConfirmReceipt = (
+    order.fulfillment_type === "delivery" && order.status === "out_for_delivery"
+  ) || (
+    order.fulfillment_type === "pickup" && order.status === "ready"
+  );
   return (
     <div className="page-container detail-page">
       <Link className="back-link" to="/orders">← All orders</Link>
@@ -76,7 +98,7 @@ export function OrderDetailPage() {
                 <li key={`${event.to_status}-${event.created_at}`}>
                   <span><Icon name="check" size={16} /></span>
                   <div>
-                    <strong>{titleCase(event.to_status)}</strong>
+                    <strong>{orderStatusLabel(event.to_status)}</strong>
                     <small>{formatDate(event.created_at)}{event.actor_name ? ` · ${event.actor_name}` : ""}</small>
                     {event.note && <p>{event.note}</p>}
                   </div>
@@ -99,13 +121,23 @@ export function OrderDetailPage() {
               <div><dt>Method</dt><dd>{titleCase(order.fulfillment_type)}</dd></div>
               {order.delivery_building_name && <div><dt>Building</dt><dd>{order.delivery_building_name}</dd></div>}
               {order.delivery_location && <div><dt>Meeting point</dt><dd>{order.delivery_location}</dd></div>}
-              <div><dt>Payment</dt><dd>{titleCase(order.payment?.status ?? "unknown")}</dd></div>
+              <div><dt>Online payment</dt><dd>{order.payment ? titleCase(order.payment.status) : "Not required"}</dd></div>
             </dl>
           </section>
+          {canConfirmReceipt && (
+            <section className="card compact-form">
+              <h2>{order.fulfillment_type === "delivery" ? "Did your order arrive?" : "Did you collect your order?"}</h2>
+              <p>Your confirmation closes the order for both you and the vendor.</p>
+              <button className="button button--primary button--full" onClick={() => setConfirmingReceipt(true)} disabled={busy}>
+                {order.fulfillment_type === "delivery" ? "I received my order" : "I collected my order"}
+              </button>
+              {actionError && <ErrorState error={actionError} />}
+            </section>
+          )}
           {canCancel && (
             <form className="card compact-form" onSubmit={cancel}>
               <h2>{order.status === "placed" ? "Request cancellation" : "Cancel checkout"}</h2>
-              <p>{order.status === "placed" ? "Paid cancellations require manual review." : "Reserved stock will be returned."}</p>
+              <p>{order.status === "placed" ? "Placed orders require cancellation review." : "Reserved stock will be returned."}</p>
               <label>Reason<textarea value={reason} onChange={(event) => setReason(event.target.value)} minLength={5} maxLength={500} required /></label>
               <button className="button button--danger button--full" disabled={busy}>{busy ? "Submitting..." : "Continue"}</button>
               {actionError && <ErrorState error={actionError} />}
@@ -113,6 +145,16 @@ export function OrderDetailPage() {
           )}
         </aside>
       </div>
+      <ConfirmDialog
+        open={confirmingReceipt}
+        title="Complete this order?"
+        message={order.fulfillment_type === "delivery"
+          ? "Confirm that the order arrived. Its status will change to Completed."
+          : "Confirm that you collected the order. Its status will change to Completed."}
+        confirmLabel={busy ? "Completing..." : "Yes, complete order"}
+        onConfirm={complete}
+        onCancel={() => !busy && setConfirmingReceipt(false)}
+      />
     </div>
   );
 }

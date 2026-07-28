@@ -35,3 +35,21 @@ export const auditQuerySchema = Joi.object({
   action: Joi.string().trim().max(80),
 });
 
+export const adminOrdersQuerySchema = Joi.object({
+  ...pagination,
+  status: Joi.string().valid(
+    "pending_payment",
+    "payment_processing",
+    "placed",
+    "accepted",
+    "preparing",
+    "ready",
+    "out_for_delivery",
+    "completed",
+    "cancelled",
+    "cancellation_requested",
+    "needs_attention",
+  ),
+  search: Joi.string().trim().max(160),
+});
+

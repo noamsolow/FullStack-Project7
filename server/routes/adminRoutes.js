@@ -6,6 +6,7 @@ import { validate } from "../middleware/validate.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { numericIdParam, publicIdParam } from "../validation/common.js";
 import {
+  adminOrdersQuerySchema,
   adminUsersQuerySchema,
   adminVendorsQuerySchema,
   auditQuerySchema,
@@ -61,6 +62,16 @@ adminRouter.get(
   "/audit",
   validate(auditQuerySchema, "query"),
   asyncHandler(controller.auditHandler),
+);
+adminRouter.get(
+  "/orders",
+  validate(adminOrdersQuerySchema, "query"),
+  asyncHandler(controller.ordersHandler),
+);
+adminRouter.get(
+  "/orders/:publicId",
+  validate(publicIdParam, "params"),
+  asyncHandler(controller.orderDetailsHandler),
 );
 adminRouter.get(
   "/maintenance-tickets",

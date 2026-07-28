@@ -7,9 +7,7 @@
   "scripts": {
     "dev": "node --watch --env-file-if-exists=.env index.js",
     "start": "node --env-file-if-exists=.env index.js",
-    "seed:users": "node --env-file-if-exists=.env scripts/seedUsers.js",
-    "lint": "eslint .",
-    "test": "node --test"
+    "lint": "eslint ."
   },
   "engines": {
     "node": ">=22"

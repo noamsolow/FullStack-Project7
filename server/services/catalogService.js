@@ -8,12 +8,16 @@ import {
   listVendors,
 } from "../models/catalogModel.js";
 import { notFound } from "../utils/AppError.js";
+import {
+  calculateDeliveryFeeAgorot,
+  withCampusMapPosition,
+} from "../utils/deliveryPricing.js";
 import { paginated, paginationFrom } from "../utils/pagination.js";
 
 export async function buildings(query) {
   const paging = paginationFrom(query);
   const rows = await listBuildings(paging);
-  return paginated(rows, paging.page, paging.limit);
+  return paginated(rows.map(withCampusMapPosition), paging.page, paging.limit);
 }
 
 export async function categories(query) {
@@ -23,7 +27,7 @@ export async function categories(query) {
 export async function vendors(query) {
   const paging = paginationFrom(query);
   const rows = await listVendors({ ...paging, ...query });
-  return paginated(rows, paging.page, paging.limit);
+  return paginated(rows.map(withCampusMapPosition), paging.page, paging.limit);
 }
 
 export async function vendorDetails(slug) {
@@ -34,7 +38,14 @@ export async function vendorDetails(slug) {
     listCategories(),
   ]);
   delete vendor.id;
-  return { ...vendor, deliveryZones: zones, categories: categoryRows };
+  return {
+    ...withCampusMapPosition(vendor),
+    deliveryZones: zones.map((zone) => ({
+      ...withCampusMapPosition(zone),
+      fee_agorot: calculateDeliveryFeeAgorot(zone),
+    })),
+    categories: categoryRows,
+  };
 }
 
 export async function vendorProducts(slug, query) {

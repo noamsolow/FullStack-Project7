@@ -44,5 +44,7 @@ export const adminService = {
       invalidate: "/admin/maintenance-tickets",
     },
   ),
+  orders: (query = {}) => apiRequest("/admin/orders", { query, cache: false }),
+  order: (publicId) => apiRequest(`/admin/orders/${publicId}`, { cache: false }),
   audit: (query = {}) => apiRequest("/admin/audit", { query, cache: false }),
 };

@@ -217,6 +217,12 @@ export function AuthPage({ portal = "customer", mode = "login" }) {
           {portal === "customer" && !isRegister && (
             <Link className="partner-entry" to="/partner/login">Vendor or print partner? Open partner workspace →</Link>
           )}
+          {portal === "customer" && !isRegister && (
+            <Link className="partner-entry" to="/admin/login">Campus administrator? Open admin workspace →</Link>
+          )}
+          {portal !== "customer" && (
+            <Link className="partner-entry" to="/login">← Back to customer sign in</Link>
+          )}
         </form>
       </main>
     </div>

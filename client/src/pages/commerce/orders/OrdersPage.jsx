@@ -17,7 +17,7 @@ export function OrdersPage() {
       <PageHeader
         eyebrow="Orders"
         title="Everything you ordered"
-        description="Track payment, preparation, pickup, and campus delivery."
+        description="Track preparation, pickup, and campus delivery."
         actions={<Link className="button button--primary" to="/eat">Start an order</Link>}
       />
       {loading && <LoadingState label="Loading your orders..." />}

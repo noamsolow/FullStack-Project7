@@ -4,7 +4,6 @@
 
 - [x] Server ESLint passes.
 - [x] Client ESLint passes.
-- [x] Ten Node unit tests pass.
 - [x] Vite production build passes.
 - [x] Server npm audit reports zero known vulnerabilities.
 - [x] Client uses the current React Router release.
@@ -23,9 +22,7 @@
 
 ## Requires external sandboxes
 
-- [ ] PayPal order create, approval return, and capture in ILS.
-- [ ] Duplicate PayPal capture remains idempotent.
-- [ ] Print jobs cannot create payment before an unexpired quote.
+- [ ] Print jobs cannot confirm before an unexpired quote.
 - [ ] OpenAI output references only the candidate product set.
 - [ ] Missing OpenAI key displays deterministic fallback.
 

@@ -59,12 +59,10 @@ server caps `limit` at 50.
 | POST | `/recommendations` |
 | GET/POST | `/orders`, `/orders/checkout` |
 | GET | `/orders/:publicId` |
-| POST | `/orders/:publicId/payment/capture` |
 | POST | `/orders/:publicId/cancellation-requests` |
 | GET/POST | `/print-jobs` |
 | GET | `/print-jobs/:publicId` |
 | POST | `/print-jobs/:publicId/payment` |
-| POST | `/print-jobs/:publicId/payment/capture` |
 | POST | `/print-jobs/:publicId/cancellation-requests` |
 | GET/POST | `/maintenance-tickets` |
 | GET | `/maintenance-tickets/:publicId` |

@@ -6,7 +6,7 @@ import {
   useState,
 } from "react";
 
-const CART_KEY = "levgo.cart";
+const CART_KEY = "levgo.cart.v2";
 const CartContext = createContext(null);
 
 function readCart() {

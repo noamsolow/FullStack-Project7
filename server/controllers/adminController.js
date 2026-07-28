@@ -1,5 +1,6 @@
 import * as admin from "../services/adminService.js";
 import * as maintenance from "../services/maintenanceService.js";
+import * as orders from "../services/orderService.js";
 
 const context = (request) => ({ requestId: request.id, ip: request.ip });
 
@@ -54,6 +55,16 @@ export async function updateBuildingHandler(request, response) {
 
 export async function auditHandler(request, response) {
   response.json(await admin.auditLogs(request.query));
+}
+
+export async function ordersHandler(request, response) {
+  response.json(await orders.adminOrderLogs(request.query));
+}
+
+export async function orderDetailsHandler(request, response) {
+  response.json({
+    data: await orders.orderDetails(request.user, request.params.publicId),
+  });
 }
 
 export async function maintenanceHandler(request, response) {

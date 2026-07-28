@@ -1,7 +1,9 @@
 import Joi from "joi";
 
+export const publicId = Joi.string().guid({ version: ["uuidv1", "uuidv4"] });
+
 export const publicIdParam = Joi.object({
-  publicId: Joi.string().guid({ version: ["uuidv4"] }).required(),
+  publicId: publicId.required(),
 });
 
 export const slugParam = Joi.object({

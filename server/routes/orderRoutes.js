@@ -42,4 +42,9 @@ orderRouter.post(
   validate(cancellationSchema),
   asyncHandler(controller.cancelHandler),
 );
+orderRouter.post(
+  "/:publicId/completion",
+  validate(publicIdParam, "params"),
+  asyncHandler(controller.completeHandler),
+);
 

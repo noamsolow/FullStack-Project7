@@ -1,5 +1,5 @@
 import Joi from "joi";
-import { pagination } from "./common.js";
+import { pagination, publicId } from "./common.js";
 
 const status = Joi.string().valid(
   "open",
@@ -53,7 +53,7 @@ export const maintenanceCommentSchema = Joi.object({
 export const maintenanceUpdateSchema = Joi.object({
   status: status.required(),
   priority: priority.required(),
-  assignedAdminPublicId: Joi.string().guid({ version: ["uuidv4"] }).allow(null, ""),
+  assignedAdminPublicId: publicId.allow(null, ""),
   note: Joi.string().trim().max(500).allow("", null),
 });
 

@@ -20,7 +20,8 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(initial?.user ?? null);
   const [checking, setChecking] = useState(Boolean(initial?.token));
 
-  const logout = useCallback(() => {
+  const logout = useCallback((record = true) => {
+    if (record) authService.logout().catch(() => {});
     clearSession();
     setUser(null);
     setChecking(false);
@@ -33,7 +34,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    const expire = () => logout();
+    const expire = () => logout(false);
     window.addEventListener("levgo:session-expired", expire);
     return () => window.removeEventListener("levgo:session-expired", expire);
   }, [logout]);
@@ -52,7 +53,7 @@ export function AuthProvider({ children }) {
         setUser(data);
       })
       .catch(() => {
-        if (active) logout();
+        if (active) logout(false);
       })
       .finally(() => {
         if (active) setChecking(false);

@@ -22,8 +22,13 @@ export function PrintJobDetailPage() {
     setActionError(null);
     try {
       const response = await printService.checkout(publicId);
-      sessionStorage.setItem("levgo.pending-payment", JSON.stringify({ type: "print", publicId }));
-      window.location.assign(response.data.approvalUrl);
+      if (response.data.paymentRequired && response.data.approvalUrl) {
+        sessionStorage.setItem("levgo.pending-payment", JSON.stringify({ type: "print", publicId }));
+        window.location.assign(response.data.approvalUrl);
+        return;
+      }
+      await reload();
+      setBusy(false);
     } catch (caught) {
       setActionError(caught);
       setBusy(false);
@@ -87,8 +92,9 @@ export function PrintJobDetailPage() {
               <h2>{formatMoney(job.quote_agorot)}</h2>
               <p>Valid until {formatDate(job.quote_expires_at)}.</p>
               <button className="button button--primary button--full" onClick={pay} disabled={busy}>
-                {busy ? "Opening checkout..." : "Pay with PayPal"}
+                {busy ? "Approving quote..." : "Approve quote"}
               </button>
+              <p>No online payment is required.</p>
             </section>
           )}
           {["ready", "completed"].includes(job.status) && (
@@ -99,7 +105,7 @@ export function PrintJobDetailPage() {
           {["submitted", "quoted", "pending_payment", "paid"].includes(job.status) && (
             <form className="card compact-form" onSubmit={cancel}>
               <h2>{job.status === "paid" ? "Request cancellation" : "Cancel print job"}</h2>
-              <p>{job.status === "paid" ? "Paid jobs require manual cancellation and refund review." : "The private file will follow the 30-day deletion policy."}</p>
+              <p>{job.status === "paid" ? "Approved jobs require manual cancellation review." : "The private file will follow the 30-day deletion policy."}</p>
               <label>Reason<textarea value={reason} onChange={(event) => setReason(event.target.value)} minLength={5} maxLength={500} required /></label>
               <button className="button button--danger button--full" disabled={busy}>{busy ? "Submitting..." : "Continue"}</button>
             </form>

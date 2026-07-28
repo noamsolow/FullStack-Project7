@@ -4,35 +4,27 @@ import { Icon } from "../../components/ui/Icon.jsx";
 
 const services = [
   {
-    to: "/eat",
+    to: "/services#food",
     icon: "eat",
-    label: "Eat",
-    title: "Lunch between lectures",
-    text: "Browse campus kitchens, snacks, and drinks for pickup or building delivery.",
+    label: "Food services",
+    title: "Meals between lectures",
+    text: "Choose the meat or dairy cafeteria for campus pickup or delivery.",
     className: "service-card--coral",
   },
   {
-    to: "/shop",
+    to: "/services#office",
     icon: "shop",
-    label: "Shop",
-    title: "The supplies you forgot",
-    text: "Pens, notebooks, cables, study tools, and dorm essentials—right on campus.",
+    label: "Office services",
+    title: "Supplies and printing",
+    text: "Find office essentials or send a document through the private print workflow.",
     className: "service-card--violet",
   },
   {
-    to: "/print",
-    icon: "print",
-    label: "Print",
-    title: "Upload. Quote. Collect.",
-    text: "Send a private PDF to a campus print point and pay only after review.",
-    className: "service-card--cyan",
-  },
-  {
-    to: "/report",
+    to: "/services#maintenance",
     icon: "report",
-    label: "Report",
-    title: "Help campus work better",
-    text: "Report something broken, missing, or unsafe and follow its progress.",
+    label: "Maintenance services",
+    title: "Report a campus issue",
+    text: "Report something broken, missing, or unsafe and track it through resolution.",
     className: "service-card--navy",
   },
 ];
@@ -47,19 +39,19 @@ export function HomePage() {
           <span className="hero__badge"><i /> Made for Lev Campus</span>
           <h1>Campus life,<br /><em>handled.</em></h1>
           <p>
-            Food, study supplies, private printing, and campus support—
+            Food, office, printing, and campus maintenance services—
             one clear place for the moments between everything else.
           </p>
           <div className="hero__actions">
-            <Link to="/eat" className="button button--primary button--large">
-              Explore LevGo <Icon name="arrow" />
+            <Link to="/services" className="button button--primary button--large">
+              Explore services <Icon name="arrow" />
             </Link>
             <Link to="/recommend" className="button button--glass button--large">
               <Icon name="sparkles" /> Ask LevGo
             </Link>
           </div>
           <div className="hero__proof">
-            <span><Icon name="shield" /> Secure checkout</span>
+            <span><Icon name="shield" /> Server-verified orders</span>
             <span><Icon name="building" /> Campus-only delivery</span>
           </div>
         </div>
@@ -73,20 +65,20 @@ export function HomePage() {
           <div className="hero-mark"><LevGoMark size={150} /></div>
           <div className="floating-card floating-card--order">
             <span className="floating-card__icon">✓</span>
-            <div><strong>Order ready</strong><small>Student Center · pickup</small></div>
+            <div><strong>Order ready</strong><small>Sohachevsky Building · pickup</small></div>
           </div>
           <div className="floating-card floating-card--print">
             <span className="floating-card__icon floating-card__icon--cyan">A4</span>
-            <div><strong>Print quoted</strong><small>Review before payment</small></div>
+            <div><strong>Print quoted</strong><small>Review before approval</small></div>
           </div>
         </div>
       </section>
 
       <section className="home-section">
         <div className="section-heading">
-          <span className="eyebrow">One campus. Four shortcuts.</span>
+          <span className="eyebrow">One campus. Three service areas.</span>
           <h2>What do you need right now?</h2>
-          <p>Each service has its own safe workflow, joined by one familiar experience.</p>
+          <p>Start from the service hub, then continue to the workflow for your specific need.</p>
         </div>
         <div className="service-grid">
           {services.map((service) => (
@@ -95,7 +87,7 @@ export function HomePage() {
               <span className="service-card__label">{service.label}</span>
               <h3>{service.title}</h3>
               <p>{service.text}</p>
-              <span className="service-card__link">Open {service.label} <Icon name="arrow" size={18} /></span>
+              <span className="service-card__link">View services <Icon name="arrow" size={18} /></span>
             </Link>
           ))}
         </div>
@@ -104,19 +96,19 @@ export function HomePage() {
       <section className="campus-strip">
         <div>
           <span className="eyebrow">Built around your day</span>
-          <h2>From Canada Hall to the dorms.</h2>
+          <h2>From the cafeterias to the dorms.</h2>
           <p>
             Choose real Lev Campus destinations, see exact building delivery fees,
             and track every step without guessing where your order went.
           </p>
-          <Link to="/shop" className="text-link">See campus essentials <Icon name="arrow" /></Link>
+          <Link to="/services" className="text-link">See all campus services <Icon name="arrow" /></Link>
         </div>
         <div className="campus-strip__map" aria-label="Stylized Lev Campus route">
-          <span className="map-node map-node--start"><i /><strong>12</strong><small>Student Center</small></span>
+          <span className="map-node map-node--start"><i /><strong>12</strong><small>Sohachevsky</small></span>
           <span className="map-route" />
-          <span className="map-node map-node--middle"><i /><strong>23</strong><small>Samson Academic</small></span>
+          <span className="map-node map-node--middle"><i /><strong>22</strong><small>Levi Building</small></span>
           <span className="map-route map-route--two" />
-          <span className="map-node map-node--end"><i /><strong>45</strong><small>Residence Hall</small></span>
+          <span className="map-node map-node--end"><i /><strong>45</strong><small>Sherman B</small></span>
         </div>
       </section>
     </>

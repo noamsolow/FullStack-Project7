@@ -1,10 +1,10 @@
 import Joi from "joi";
-import { pagination } from "./common.js";
+import { pagination, publicId } from "./common.js";
 
 export const checkoutSchema = Joi.object({
   items: Joi.array()
     .items(Joi.object({
-      productId: Joi.string().guid({ version: ["uuidv4"] }).required(),
+      productId: publicId.required(),
       quantity: Joi.number().integer().min(1).max(20).required(),
     }))
     .min(1)
@@ -46,11 +46,9 @@ export const orderListQuerySchema = Joi.object({
 
 export const updateOrderStatusSchema = Joi.object({
   status: Joi.string().valid(
-    "accepted",
     "preparing",
     "ready",
     "out_for_delivery",
-    "completed",
     "needs_attention",
   ).required(),
   note: Joi.string().trim().max(500).allow("", null),

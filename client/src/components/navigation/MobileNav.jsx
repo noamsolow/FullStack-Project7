@@ -4,17 +4,19 @@ import { Icon } from "../ui/Icon.jsx";
 
 const items = [
   { to: "/", icon: "home", label: "Home", end: true },
-  { to: "/eat", icon: "eat", label: "Eat" },
-  { to: "/shop", icon: "shop", label: "Shop" },
-  { to: "/print", icon: "print", label: "Print" },
-  { to: "/report", icon: "report", label: "Report" },
+  { to: "/services", icon: "shop", label: "Services" },
+  { to: "/cart", icon: "cart", label: "Cart" },
 ];
 
 export function MobileNav() {
   const { user } = useAuth();
   const visibleItems = user
-    ? [...items, { to: "/orders", icon: "orders", label: "Orders" }]
-    : items;
+    ? [
+      ...items,
+      { to: "/orders", icon: "orders", label: "Orders" },
+      { to: "/account", icon: "user", label: "Account" },
+    ]
+    : [...items, { to: "/login", icon: "user", label: "Sign in" }];
   return (
     <nav className="mobile-nav" aria-label="Mobile navigation">
       {visibleItems.map((item) => (

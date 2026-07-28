@@ -20,3 +20,16 @@ export function titleCase(value = "") {
     .replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
+const orderStatusLabels = {
+  placed: "Sent",
+  accepted: "Sent",
+  preparing: "In progress",
+  ready: "Ready for pickup",
+  out_for_delivery: "On the way",
+  completed: "Completed",
+};
+
+export function orderStatusLabel(status = "") {
+  return orderStatusLabels[status] ?? titleCase(status);
+}
+

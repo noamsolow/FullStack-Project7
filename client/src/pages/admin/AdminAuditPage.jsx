@@ -12,7 +12,7 @@ export function AdminAuditPage() {
   const { data, loading, error, reload } = useApiResource(load);
   return (
     <div className="portal-page">
-      <PageHeader eyebrow="Accountability" title="Audit log" description="Security-relevant actions without secrets, private files, or full prompts." actions={<label className="compact-search"><span className="sr-only">Exact action filter</span><input value={action} onChange={(event) => setAction(event.target.value)} placeholder="Exact action, e.g. auth.login" /></label>} />
+      <PageHeader eyebrow="Security and system activity" title="System audit log" description="Sign-ins, sign-outs, account activity, and security-relevant system actions." actions={<label className="compact-search"><span className="sr-only">Exact action filter</span><input value={action} onChange={(event) => setAction(event.target.value)} placeholder="Exact action, e.g. auth.login" /></label>} />
       {loading && <LoadingState />}
       {error && <ErrorState error={error} onRetry={reload} />}
       {!loading && !error && !data?.data.length && <EmptyState icon="shield" title="No audit events" message="No events match this exact action filter." />}

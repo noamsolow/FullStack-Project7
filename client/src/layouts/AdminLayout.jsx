@@ -4,6 +4,7 @@ import { useAuth } from "../features/auth/AuthContext.jsx";
 
 const items = [
   { to: "/admin", icon: "home", label: "Overview", end: true },
+  { to: "/admin/orders", icon: "orders", label: "Order logs" },
   { to: "/admin/maintenance", icon: "report", label: "Maintenance" },
   { to: "/admin/users", icon: "user", label: "Users" },
   { to: "/admin/vendors", icon: "shop", label: "Vendors" },

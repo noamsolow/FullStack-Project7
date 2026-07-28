@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { CampusMap } from "../../../components/campus/CampusMap.jsx";
 import { Icon } from "../../../components/ui/Icon.jsx";
 import { PageHeader } from "../../../components/ui/PageHeader.jsx";
 import { EmptyState, ErrorState } from "../../../components/ui/PageState.jsx";
@@ -34,11 +35,8 @@ export function CartPage() {
 
   const groupedNotice = useMemo(() => {
     if (fulfillment !== "delivery" || !selectedZone) return null;
-    if (cart.subtotalAgorot < selectedZone.minimum_order_agorot) {
-      return `Add ${formatMoney(selectedZone.minimum_order_agorot - cart.subtotalAgorot)} more for this delivery zone.`;
-    }
     return `Estimated ${selectedZone.eta_min_minutes}–${selectedZone.eta_max_minutes} minutes.`;
-  }, [cart.subtotalAgorot, fulfillment, selectedZone]);
+  }, [fulfillment, selectedZone]);
 
   async function checkout() {
     if (!user) {
@@ -58,11 +56,16 @@ export function CartPage() {
           ? { deliveryBuildingId: Number(buildingId), deliveryLocation: location }
           : {}),
       });
-      sessionStorage.setItem("levgo.pending-payment", JSON.stringify({
-        type: "order",
-        publicId: result.data.orderPublicId,
-      }));
-      window.location.assign(result.data.approvalUrl);
+      if (result.data.paymentRequired && result.data.approvalUrl) {
+        sessionStorage.setItem("levgo.pending-payment", JSON.stringify({
+          type: "order",
+          publicId: result.data.orderPublicId,
+        }));
+        window.location.assign(result.data.approvalUrl);
+        return;
+      }
+      cart.clear();
+      navigate(`/orders/${result.data.orderPublicId}`);
     } catch (caught) {
       setError(caught);
     } finally {
@@ -127,7 +130,17 @@ export function CartPage() {
           </div>
           {fulfillment === "delivery" && (
             <div className="checkout-fields">
-              <label>
+              <CampusMap
+                buildings={details?.deliveryZones?.filter((zone) => zone.is_active)}
+                vendors={details ? [details] : []}
+                selectedBuildingId={buildingId}
+                onSelectBuilding={setBuildingId}
+                title="Where should we deliver?"
+              />
+              {!buildingId && (
+                <p className="delivery-notice">Select your building on the map to calculate delivery.</p>
+              )}
+              <label className="visually-hidden">
                 Delivery building
                 <select value={buildingId} onChange={(event) => setBuildingId(event.target.value)} required>
                   <option value="">Choose a delivery zone</option>
@@ -148,7 +161,12 @@ export function CartPage() {
                   required
                 />
               </label>
-              {groupedNotice && <p className="delivery-notice">{groupedNotice}</p>}
+              {selectedZone && (
+                <p className="delivery-notice">
+                  Delivery to {selectedZone.building_name}: {formatMoney(selectedZone.fee_agorot)}.
+                  {groupedNotice && ` ${groupedNotice}`}
+                </p>
+              )}
             </div>
           )}
           <dl className="price-summary">
@@ -166,13 +184,12 @@ export function CartPage() {
               || (fulfillment === "delivery" && (
                 !selectedZone
                 || !location.trim()
-                || cart.subtotalAgorot < selectedZone.minimum_order_agorot
               ))
             }
           >
-            {submitting ? "Creating secure checkout..." : user ? "Continue to PayPal" : "Sign in to checkout"}
+            {submitting ? "Placing order..." : user ? "Place order" : "Sign in to order"}
           </button>
-          <p className="secure-note"><Icon name="shield" size={16} /> Prices and totals are verified by LevGo’s server.</p>
+          <p className="secure-note"><Icon name="shield" size={16} /> No online payment is required. Prices and totals are verified by LevGo’s server.</p>
         </aside>
       </div>
     </div>

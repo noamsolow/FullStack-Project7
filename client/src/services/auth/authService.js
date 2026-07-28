@@ -21,6 +21,7 @@ export const authService = {
     method: "POST",
     body,
   }),
+  logout: () => apiRequest("/auth/logout", { method: "POST" }),
   me: () => apiRequest("/auth/me", { cache: false }),
   updateMe: (body) => apiRequest("/auth/me", {
     method: "PATCH",

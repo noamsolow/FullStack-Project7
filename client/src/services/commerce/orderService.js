@@ -24,4 +24,8 @@ export const orderService = {
       invalidate: "/orders",
     },
   ),
+  complete: (publicId) => apiRequest(`/orders/${publicId}/completion`, {
+    method: "POST",
+    invalidate: "/orders",
+  }),
 };

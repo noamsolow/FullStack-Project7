@@ -1,4 +1,4 @@
-import { titleCase } from "../../utils/format.js";
+import { orderStatusLabel } from "../../utils/format.js";
 
 const positive = new Set(["active", "open", "ready", "completed", "resolved", "paid", "success"]);
 const warning = new Set([
@@ -20,5 +20,5 @@ export function StatusChip({ status }) {
       : negative.has(status)
         ? "negative"
         : "neutral";
-  return <span className={`status-chip status-chip--${tone}`}>{titleCase(status)}</span>;
+  return <span className={`status-chip status-chip--${tone}`}>{orderStatusLabel(status)}</span>;
 }

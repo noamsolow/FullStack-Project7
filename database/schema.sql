@@ -1,8 +1,8 @@
-CREATE DATABASE IF NOT EXISTS levgo
+CREATE DATABASE IF NOT EXISTS project7
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_0900_ai_ci;
 
-USE levgo;
+USE project7;
 
 CREATE TABLE IF NOT EXISTS users (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -34,12 +34,22 @@ CREATE TABLE IF NOT EXISTS buildings (
   short_name VARCHAR(80) NOT NULL,
   description VARCHAR(500) NULL,
   delivery_hint VARCHAR(300) NULL,
+  map_x DECIMAL(6,3) NULL,
+  map_y DECIMAL(6,3) NULL,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT uq_buildings_code UNIQUE (campus_code),
+  CONSTRAINT chk_buildings_map_x CHECK (map_x IS NULL OR map_x BETWEEN 0 AND 100),
+  CONSTRAINT chk_buildings_map_y CHECK (map_y IS NULL OR map_y BETWEEN 0 AND 100),
   INDEX idx_buildings_active_name (is_active, name)
 ) ENGINE=InnoDB;
+
+-- Keeps an existing project7 database compatible when this schema is rerun
+-- from MySQL Workbench with an administrator connection.
+ALTER TABLE buildings
+  ADD COLUMN IF NOT EXISTS map_x DECIMAL(6,3) NULL AFTER delivery_hint,
+  ADD COLUMN IF NOT EXISTS map_y DECIMAL(6,3) NULL AFTER map_x;
 
 CREATE TABLE IF NOT EXISTS vendors (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -224,7 +234,6 @@ CREATE TABLE IF NOT EXISTS orders (
   ),
   CONSTRAINT chk_order_total CHECK (
     subtotal_agorot + delivery_fee_agorot = total_agorot
-    AND total_agorot <= 200000
   ),
   INDEX idx_orders_user_created (user_id, created_at),
   INDEX idx_orders_vendor_status (vendor_id, status, created_at),
