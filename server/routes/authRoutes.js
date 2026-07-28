@@ -46,6 +46,11 @@ authRouter.post(
   asyncHandler(controller.adminLoginHandler),
 );
 authRouter.get("/me", authenticate, asyncHandler(controller.meHandler));
+authRouter.get(
+  "/me/spending",
+  authenticate,
+  asyncHandler(controller.spendingHandler),
+);
 authRouter.post("/logout", authenticate, asyncHandler(controller.logoutHandler));
 authRouter.patch(
   "/me",

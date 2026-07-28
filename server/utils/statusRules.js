@@ -8,8 +8,8 @@ export const orderTransitions = Object.freeze({
 });
 
 export const printTransitions = Object.freeze({
-  submitted: ["quoted", "rejected", "cancelled"],
-  quoted: ["pending_payment", "cancelled", "rejected"],
+  submitted: ["printing", "rejected", "cancelled", "needs_attention"],
+  quoted: ["printing", "cancelled", "rejected", "needs_attention"],
   paid: ["printing", "cancellation_requested", "needs_attention"],
   printing: ["ready", "needs_attention"],
   ready: ["completed", "needs_attention"],

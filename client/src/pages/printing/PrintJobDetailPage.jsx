@@ -80,7 +80,9 @@ export function PrintJobDetailPage() {
               <div><dt>Sides</dt><dd>{titleCase(job.sides)}</dd></div>
               <div><dt>Copies</dt><dd>{job.copies}</dd></div>
               <div><dt>Stapled</dt><dd>{job.stapled ? "Yes" : "No"}</dd></div>
-              <div><dt>Quote</dt><dd>{job.quote_agorot ? formatMoney(job.quote_agorot) : "Pending"}</dd></div>
+              <div><dt>Lamination</dt><dd>{job.laminated ? "Every printed A4 sheet" : "No"}</dd></div>
+              <div><dt>Spiral binding</dt><dd>{job.spiral_bound ? "Yes" : "No"}</dd></div>
+              <div><dt>Fixed price</dt><dd>{job.quote_agorot ? formatMoney(job.quote_agorot) : "Calculating"}</dd></div>
             </dl>
             <button className="button button--secondary button--full" onClick={() => downloadPrivateFile(`/media/print-files/${job.file_public_id}`, job.file_name)}>
               <Icon name="upload" /> Download my PDF
@@ -95,6 +97,18 @@ export function PrintJobDetailPage() {
                 {busy ? "Approving quote..." : "Approve quote"}
               </button>
               <p>No online payment is required.</p>
+            </section>
+          )}
+          {job.quote_agorot && job.status !== "quoted" && (
+            <section className="action-card">
+              <span className="eyebrow">Fixed print price</span>
+              <h2>{formatMoney(job.quote_agorot)}</h2>
+              <p>Calculated at ₪0.10 per black-and-white PDF page or ₪0.50 per color page, multiplied by the number of copies.</p>
+            </section>
+          )}
+          {job.status === "submitted" && (
+            <section className="delivery-notice">
+              Your file was sent securely. The print center must begin production before it can mark the job as ready for pickup.
             </section>
           )}
           {["ready", "completed"].includes(job.status) && (

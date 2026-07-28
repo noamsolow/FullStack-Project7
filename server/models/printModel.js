@@ -4,8 +4,9 @@ export async function createPrintJob(data, executor) {
   const [result] = await executor.query(
     `INSERT INTO print_jobs (
       public_id, job_number, user_id, vendor_id, paper_size, color_mode,
-      sides, copies, stapled, customer_note, pickup_code
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      sides, copies, stapled, laminated, spiral_bound, customer_note,
+      quote_agorot, status, pickup_code
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.publicId,
       data.jobNumber,
@@ -16,11 +17,26 @@ export async function createPrintJob(data, executor) {
       data.sides,
       data.copies,
       data.stapled,
+      data.laminated,
+      data.spiralBound,
       data.customerNote ?? null,
+      data.quoteAgorot,
+      data.status,
       data.pickupCode,
     ],
   );
   return result.insertId;
+}
+
+export async function findPrintFileBufferByJobId(printJobId, executor = pool) {
+  const [rows] = await executor.query(
+    `SELECT file_data
+     FROM print_files
+     WHERE print_job_id = ? AND deleted_at IS NULL
+     LIMIT 1`,
+    [printJobId],
+  );
+  return rows[0]?.file_data ?? null;
 }
 
 export async function insertPrintFile(data, executor) {
@@ -88,7 +104,8 @@ export async function listCustomerPrintJobs(
   const [rows] = await executor.query(
     `SELECT
       pj.public_id, pj.job_number, pj.paper_size, pj.color_mode,
-      pj.sides, pj.copies, pj.stapled, pj.quote_agorot, pj.currency,
+      pj.sides, pj.copies, pj.stapled, pj.laminated, pj.spiral_bound,
+      pj.quote_agorot, pj.currency,
       pj.status, pj.pickup_code, pj.quote_expires_at,
       pj.created_at, pj.updated_at, v.name AS vendor_name
      FROM print_jobs pj
@@ -116,7 +133,8 @@ export async function listVendorPrintJobs(
   const [rows] = await executor.query(
     `SELECT
       pj.public_id, pj.job_number, pj.paper_size, pj.color_mode,
-      pj.sides, pj.copies, pj.stapled, pj.customer_note,
+      pj.sides, pj.copies, pj.stapled, pj.laminated, pj.spiral_bound,
+      pj.customer_note,
       pj.quote_agorot, pj.currency, pj.status, pj.pickup_code,
       pj.created_at, pj.updated_at, u.display_name AS customer_name,
       pf.public_id AS file_public_id, pf.original_name AS file_name,
@@ -146,13 +164,18 @@ export async function listPrintHistory(printJobId, executor = pool) {
   return rows;
 }
 
-export async function quotePrintJob(printJobId, quoteAgorot, executor = pool) {
+export async function quotePrintJob(
+  printJobId,
+  quoteAgorot,
+  status = "quoted",
+  executor = pool,
+) {
   await executor.query(
     `UPDATE print_jobs
      SET quote_agorot = ?, quote_expires_at = DATE_ADD(CURRENT_TIMESTAMP, INTERVAL 24 HOUR),
-       status = 'quoted'
+       status = ?
      WHERE id = ?`,
-    [quoteAgorot, printJobId],
+    [quoteAgorot, status, printJobId],
   );
 }
 

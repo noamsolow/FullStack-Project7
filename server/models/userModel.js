@@ -75,6 +75,25 @@ export async function updateOwnProfile(userId, data, executor = pool) {
   return findActiveUserById(userId, executor);
 }
 
+export async function findUserCompletedSpending(userId, executor = pool) {
+  const [rows] = await executor.query(
+    `SELECT
+       COALESCE((
+         SELECT SUM(o.total_agorot)
+         FROM orders o
+         WHERE o.user_id = ? AND o.status = 'completed'
+       ), 0)
+       +
+       COALESCE((
+         SELECT SUM(pj.quote_agorot)
+         FROM print_jobs pj
+         WHERE pj.user_id = ? AND pj.status = 'completed'
+       ), 0) AS total_spent_agorot`,
+    [userId, userId],
+  );
+  return Number(rows[0]?.total_spent_agorot ?? 0);
+}
+
 export async function softDeleteOwnAccount(userId, executor = pool) {
   const [result] = await executor.query(
     `UPDATE users

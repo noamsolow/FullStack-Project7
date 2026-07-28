@@ -11,6 +11,7 @@ import {
   createPrintPayment,
   failPrintCheckout,
   findPaymentForPrintJob,
+  findPrintFileBufferByJobId,
   findPrintJobByPublicId,
   insertPrintFile,
   listCustomerPrintJobs,
@@ -31,12 +32,17 @@ import { AppError, conflict, forbidden, notFound } from "../utils/AppError.js";
 import {
   safeOriginalName,
   sha256,
+  pdfPageCount,
   validatePdf,
 } from "../utils/files.js";
 import { publicId, referenceNumber, shortCode } from "../utils/identifiers.js";
 import { payPalToAgorot } from "../utils/money.js";
 import { paginated, paginationFrom } from "../utils/pagination.js";
 import { canTransition, printTransitions } from "../utils/statusRules.js";
+import {
+  calculatePrintPriceAgorot,
+  printPriceNote,
+} from "../utils/printPricing.js";
 import { requireMembership } from "./partnerService.js";
 
 function canRead(user, job, membership) {
@@ -48,6 +54,27 @@ function canRead(user, job, membership) {
 export async function submitPrintJob(user, input, file, context) {
   if (!file) throw new AppError(400, "FILE_REQUIRED", "Choose a PDF to print");
   validatePdf(file);
+  const pageCount = await pdfPageCount(file.buffer);
+  if (input.laminated && input.paperSize !== "A4") {
+    throw new AppError(400, "LAMINATION_A4_ONLY", "Lamination is available for A4 printing only");
+  }
+  const quoteAgorot = calculatePrintPriceAgorot({
+    pageCount,
+    copies: input.copies,
+    colorMode: input.colorMode,
+    sides: input.sides,
+    laminated: input.laminated,
+    spiralBound: input.spiralBound,
+  });
+  const pricingNote = printPriceNote({
+    pageCount,
+    copies: input.copies,
+    colorMode: input.colorMode,
+    sides: input.sides,
+    laminated: input.laminated,
+    spiralBound: input.spiralBound,
+    totalAgorot: quoteAgorot,
+  });
   const vendor = await findVendorByPublicId(input.vendorPublicId);
   if (
     !vendor
@@ -71,7 +98,11 @@ export async function submitPrintJob(user, input, file, context) {
       sides: input.sides,
       copies: input.copies,
       stapled: input.stapled,
+      laminated: input.laminated,
+      spiralBound: input.spiralBound,
       customerNote: input.customerNote,
+      quoteAgorot,
+      status: "submitted",
       pickupCode: shortCode(),
     }, connection);
     await insertPrintFile({
@@ -86,7 +117,7 @@ export async function submitPrintJob(user, input, file, context) {
       printJobId,
       actorUserId: user.id,
       toStatus: "submitted",
-      note: "Submitted for private review and quote",
+      note: `${pricingNote} Waiting for the print center to begin production.`,
     }, connection);
   });
 
@@ -151,16 +182,36 @@ export async function setPrintQuote(user, jobPublicId, input, context) {
   await withTransaction(async (connection) => {
     const job = await findPrintJobByPublicId(jobPublicId, connection, true);
     if (!job || job.vendor_id !== membership.vendor_id) throw notFound("Print job not found");
-    if (job.status !== "submitted") {
-      throw conflict("Only submitted jobs can be quoted", "PRINT_NOT_QUOTABLE");
+    if (!["submitted", "quoted"].includes(job.status)) {
+      throw conflict("This print job already has a confirmed fixed price", "PRINT_NOT_QUOTABLE");
     }
-    await quotePrintJob(job.id, input.quoteAgorot, connection);
+    const fileBuffer = await findPrintFileBufferByJobId(job.id, connection);
+    if (!fileBuffer) throw notFound("Print file not found");
+    const pageCount = await pdfPageCount(fileBuffer);
+    const quoteAgorot = calculatePrintPriceAgorot({
+      pageCount,
+      copies: job.copies,
+      colorMode: job.color_mode,
+      sides: job.sides,
+      laminated: job.laminated,
+      spiralBound: job.spiral_bound,
+    });
+    const pricingNote = printPriceNote({
+      pageCount,
+      copies: job.copies,
+      colorMode: job.color_mode,
+      sides: job.sides,
+      laminated: job.laminated,
+      spiralBound: job.spiral_bound,
+      totalAgorot: quoteAgorot,
+    });
+    await quotePrintJob(job.id, quoteAgorot, "paid", connection);
     await addPrintHistory({
       printJobId: job.id,
       actorUserId: user.id,
-      fromStatus: "submitted",
-      toStatus: "quoted",
-      note: input.note ?? "Quote valid for 24 hours",
+      fromStatus: job.status,
+      toStatus: "paid",
+      note: input.note ? `${pricingNote} ${input.note}` : pricingNote,
     }, connection);
   });
   await writeAudit({

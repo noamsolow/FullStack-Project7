@@ -15,7 +15,7 @@ export function PrintJobsPage() {
       <PageHeader
         eyebrow="Printing"
         title="Your print jobs"
-        description="Quotes, payment, preparation, and pickup in one timeline."
+        description="Fixed pricing, preparation, and pickup in one timeline."
         actions={<Link to="/print" className="button button--primary">New print job</Link>}
       />
       {loading && <LoadingState />}
@@ -27,8 +27,19 @@ export function PrintJobsPage() {
         {data?.data?.map((job) => (
           <Link key={job.public_id} to={`/print/${job.public_id}`} className="record-row">
             <span className="record-row__code">{job.job_number}</span>
-            <span><strong>{job.vendor_name}</strong><small>{job.paper_size} · {job.copies} {job.copies === 1 ? "copy" : "copies"} · {formatDate(job.created_at)}</small></span>
-            <span>{job.quote_agorot ? formatMoney(job.quote_agorot) : "Awaiting quote"}</span>
+            <span>
+              <strong>{job.vendor_name}</strong>
+              <small>
+                {[
+                  job.paper_size,
+                  `${job.copies} ${job.copies === 1 ? "copy" : "copies"}`,
+                  job.laminated ? "Laminated" : null,
+                  job.spiral_bound ? "Spiral bound" : null,
+                  formatDate(job.created_at),
+                ].filter(Boolean).join(" · ")}
+              </small>
+            </span>
+            <span>{job.quote_agorot ? formatMoney(job.quote_agorot) : "Calculating price"}</span>
             <StatusChip status={job.status} />
           </Link>
         ))}

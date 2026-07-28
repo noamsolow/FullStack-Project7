@@ -1,10 +1,11 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useCallback, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon.jsx";
 import { ErrorState } from "../../components/ui/PageState.jsx";
 import { useAuth } from "../../features/auth/AuthContext.jsx";
+import { useApiResource } from "../../hooks/useApiResource.js";
 import { authService } from "../../services/auth/authService.js";
-import { titleCase } from "../../utils/format.js";
+import { formatMoney, titleCase } from "../../utils/format.js";
 import { readSession, writeSession } from "../../utils/session.js";
 
 export function AccountPage() {
@@ -13,6 +14,13 @@ export function AccountPage() {
   const [displayName, setDisplayName] = useState(user.displayName);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState(null);
+  const loadSpending = useCallback(() => authService.spending(), []);
+  const {
+    data: spending,
+    loading: spendingLoading,
+    error: spendingError,
+    reload: reloadSpending,
+  } = useApiResource(loadSpending, [loadSpending]);
 
   async function save(event) {
     event.preventDefault();
@@ -47,12 +55,19 @@ export function AccountPage() {
           {error && <ErrorState error={error} />}
           <button className="button button--primary">Save changes</button>
         </form>
-        <section className="card account-links">
-          <h2>Your LevGo</h2>
-          <Link to="/orders"><Icon name="orders" /><span><strong>Orders</strong><small>Food and campus supplies</small></span><Icon name="arrow" /></Link>
-          <Link to="/print/jobs"><Icon name="print" /><span><strong>Print jobs</strong><small>Quotes and pickup codes</small></span><Icon name="arrow" /></Link>
-          <Link to="/report"><Icon name="report" /><span><strong>Maintenance reports</strong><small>Campus support updates</small></span><Icon name="arrow" /></Link>
-          <button onClick={() => { logout(); navigate("/"); }}><Icon name="logout" /> Sign out</button>
+        <section className="card account-spending">
+          <div className="account-spending__icon"><Icon name="cart" /></div>
+          <span className="eyebrow">Completed payments</span>
+          <h2>{spendingLoading ? "Calculating..." : formatMoney(spending?.data?.totalSpentAgorot ?? 0)}</h2>
+          <p>Total value of completed orders and completed print jobs.</p>
+          {spendingError && (
+            <button className="button button--secondary" onClick={reloadSpending}>
+              Try again
+            </button>
+          )}
+          <button className="account-spending__logout" onClick={() => { logout(); navigate("/"); }}>
+            <Icon name="logout" /> Sign out
+          </button>
         </section>
       </div>
     </div>

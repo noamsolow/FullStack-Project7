@@ -45,12 +45,6 @@ CREATE TABLE IF NOT EXISTS buildings (
   INDEX idx_buildings_active_name (is_active, name)
 ) ENGINE=InnoDB;
 
--- Keeps an existing project7 database compatible when this schema is rerun
--- from MySQL Workbench with an administrator connection.
-ALTER TABLE buildings
-  ADD COLUMN IF NOT EXISTS map_x DECIMAL(6,3) NULL AFTER delivery_hint,
-  ADD COLUMN IF NOT EXISTS map_y DECIMAL(6,3) NULL AFTER map_x;
-
 CREATE TABLE IF NOT EXISTS vendors (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   public_id CHAR(36) NOT NULL,
@@ -285,6 +279,8 @@ CREATE TABLE IF NOT EXISTS print_jobs (
   sides ENUM('single', 'double') NOT NULL,
   copies TINYINT UNSIGNED NOT NULL,
   stapled BOOLEAN NOT NULL DEFAULT FALSE,
+  laminated BOOLEAN NOT NULL DEFAULT FALSE,
+  spiral_bound BOOLEAN NOT NULL DEFAULT FALSE,
   customer_note VARCHAR(500) NULL,
   quote_agorot INT UNSIGNED NULL,
   currency CHAR(3) NOT NULL DEFAULT 'ILS',
@@ -316,7 +312,7 @@ CREATE TABLE IF NOT EXISTS print_jobs (
   CONSTRAINT uq_print_jobs_public_id UNIQUE (public_id),
   CONSTRAINT uq_print_jobs_number UNIQUE (job_number),
   CONSTRAINT chk_print_copies CHECK (copies BETWEEN 1 AND 20),
-  CONSTRAINT chk_print_quote CHECK (quote_agorot IS NULL OR quote_agorot BETWEEN 100 AND 200000),
+  CONSTRAINT chk_print_quote CHECK (quote_agorot IS NULL OR quote_agorot BETWEEN 10 AND 200000),
   INDEX idx_print_jobs_user_created (user_id, created_at),
   INDEX idx_print_jobs_vendor_status (vendor_id, status, created_at),
   INDEX idx_print_jobs_retention (retention_delete_at)

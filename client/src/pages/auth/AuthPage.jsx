@@ -80,7 +80,17 @@ export function AuthPage({ portal = "customer", mode = "login" }) {
       else result = await authService.loginCustomer(form);
       acceptSession(result.data);
       const fallback = portal === "partner" ? "/partner" : portal === "admin" ? "/admin" : "/";
-      navigate(location.state?.from?.pathname ?? fallback, { replace: true });
+      const requestedLocation = location.state?.from;
+      navigate(
+        requestedLocation
+          ? {
+            pathname: requestedLocation.pathname,
+            search: requestedLocation.search,
+            hash: requestedLocation.hash,
+          }
+          : fallback,
+        { replace: true },
+      );
     } catch (caught) {
       setError(caught);
     } finally {

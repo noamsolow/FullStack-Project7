@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import path from "node:path";
+import { PDFDocument } from "pdf-lib";
 import { AppError } from "./AppError.js";
 
 const imageTypes = Object.freeze({
@@ -46,6 +47,21 @@ export function validatePdf(file) {
     throw new AppError(415, "INVALID_PDF", "Upload a valid PDF document");
   }
   return ".pdf";
+}
+
+export async function pdfPageCount(buffer) {
+  try {
+    const document = await PDFDocument.load(buffer, { updateMetadata: false });
+    const count = document.getPageCount();
+    if (count < 1) throw new Error("PDF has no pages");
+    return count;
+  } catch {
+    throw new AppError(
+      415,
+      "UNREADABLE_PDF",
+      "Upload a readable, non-encrypted PDF document",
+    );
+  }
 }
 
 export function safeOriginalName(name) {

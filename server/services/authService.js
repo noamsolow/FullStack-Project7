@@ -8,6 +8,7 @@ import {
   createUser,
   createVendor,
   findUserByEmail,
+  findUserCompletedSpending,
   findVendorMembership,
   softDeleteOwnAccount,
   updateOwnProfile,
@@ -208,6 +209,12 @@ export async function currentUser(user) {
     ? await findVendorMembership(user.id)
     : null;
   return safeUser(user, membership);
+}
+
+export async function completedSpending(user) {
+  return {
+    totalSpentAgorot: await findUserCompletedSpending(user.id),
+  };
 }
 
 export async function recordLogout(user, context) {

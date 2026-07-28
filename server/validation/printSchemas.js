@@ -8,6 +8,8 @@ export const submitPrintSchema = Joi.object({
   sides: Joi.string().valid("single", "double").required(),
   copies: Joi.number().integer().min(1).max(20).required(),
   stapled: Joi.boolean().required(),
+  laminated: Joi.boolean().required(),
+  spiralBound: Joi.boolean().required(),
   customerNote: Joi.string().trim().max(500).allow("", null),
 });
 
@@ -30,7 +32,6 @@ export const printListQuerySchema = Joi.object({
 });
 
 export const quotePrintSchema = Joi.object({
-  quoteAgorot: Joi.number().integer().min(100).max(200000).required(),
   note: Joi.string().trim().max(500).allow("", null),
 });
 

@@ -1,4 +1,5 @@
 import {
+  completedSpending,
   currentUser,
   deleteProfile,
   login,
@@ -35,6 +36,10 @@ export const adminLoginHandler = loginHandler("admin");
 
 export async function meHandler(request, response) {
   response.json({ data: await currentUser(request.user) });
+}
+
+export async function spendingHandler(request, response) {
+  response.json({ data: await completedSpending(request.user) });
 }
 
 export async function logoutHandler(request, response) {

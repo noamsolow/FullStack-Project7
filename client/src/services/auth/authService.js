@@ -23,6 +23,7 @@ export const authService = {
   }),
   logout: () => apiRequest("/auth/logout", { method: "POST" }),
   me: () => apiRequest("/auth/me", { cache: false }),
+  spending: () => apiRequest("/auth/me/spending", { cache: false }),
   updateMe: (body) => apiRequest("/auth/me", {
     method: "PATCH",
     body,

@@ -8,10 +8,11 @@ import { partnerService } from "../../services/portals/partnerService.js";
 import { formatDate, formatMoney, titleCase } from "../../utils/format.js";
 
 const nextStatuses = {
+  submitted: ["printing", "rejected", "needs_attention"],
+  quoted: ["printing", "rejected", "needs_attention"],
   paid: ["printing", "needs_attention"],
   printing: ["ready", "needs_attention"],
   ready: ["completed", "needs_attention"],
-  submitted: ["rejected"],
 };
 
 export function PartnerPrintJobsPage() {
@@ -21,13 +22,13 @@ export function PartnerPrintJobsPage() {
   const jobs = data?.data ?? [];
   return (
     <div className="portal-page">
-      <PageHeader eyebrow="Private printing" title="Print jobs" description="Review files securely, quote accurately, and prepare pickup." />
+      <PageHeader eyebrow="Private printing" title="Print jobs" description="Review files securely, then update printing and pickup status. Prices are calculated automatically." />
       {loading && <LoadingState />}
       {error && <ErrorState error={error} onRetry={reload} />}
       {!loading && !error && !jobs.length && <EmptyState icon="print" title="No print jobs" message="Customer uploads assigned to your print center will appear here." />}
       <div className="data-table-wrap">
         <table className="data-table">
-          <thead><tr><th>Job</th><th>Customer</th><th>Settings</th><th>Quote</th><th>Status</th><th></th></tr></thead>
+          <thead><tr><th>Job</th><th>Customer</th><th>Settings</th><th>Fixed price</th><th>Status</th><th></th></tr></thead>
           <tbody>{jobs.map((job) => (
             <tr key={job.public_id}>
               <td><strong>{job.job_number}</strong><small>{formatDate(job.created_at)}</small></td>
@@ -48,7 +49,6 @@ export function PartnerPrintJobsPage() {
 function PrintManager({ publicId, onClose, onSaved }) {
   const load = useCallback(() => partnerService.printJob(publicId), [publicId]);
   const { data, loading, error, reload } = useApiResource(load);
-  const [quote, setQuote] = useState("");
   const [status, setStatus] = useState("");
   const [note, setNote] = useState("");
   const [actionError, setActionError] = useState(null);
@@ -60,14 +60,7 @@ function PrintManager({ publicId, onClose, onSaved }) {
     setBusy(true);
     setActionError(null);
     try {
-      if (job.status === "submitted") {
-        await partnerService.quotePrint(publicId, {
-          quoteAgorot: Math.round(Number(quote) * 100),
-          note: note || null,
-        });
-      } else {
-        await partnerService.updatePrint(publicId, { status, note: note || null });
-      }
+      await partnerService.updatePrint(publicId, { status, note: note || null });
       onSaved();
     } catch (caught) {
       setActionError(caught);
@@ -91,17 +84,16 @@ function PrintManager({ publicId, onClose, onSaved }) {
             <div><dt>Sides</dt><dd>{titleCase(job.sides)}</dd></div>
             <div><dt>Copies</dt><dd>{job.copies}</dd></div>
             <div><dt>Stapled</dt><dd>{job.stapled ? "Yes" : "No"}</dd></div>
+            <div><dt>Laminated</dt><dd>{job.laminated ? "Every printed A4 sheet" : "No"}</dd></div>
+            <div><dt>Spiral bound</dt><dd>{job.spiral_bound ? "Yes" : "No"}</dd></div>
+            <div><dt>Fixed price</dt><dd>{job.quote_agorot ? formatMoney(job.quote_agorot) : "Calculating"}</dd></div>
           </dl>
           <button className="button button--secondary button--full" onClick={() => downloadPrivateFile(`/media/print-files/${job.file_public_id}`, job.file_name)}>Download private PDF</button>
           <form onSubmit={submit}>
-            {job.status === "submitted" ? (
-              <label>Final quote (ILS)<input type="number" min="1" max="2000" step="0.01" value={quote} onChange={(event) => setQuote(event.target.value)} required /></label>
-            ) : (
-              <label>Next status<select value={status} onChange={(event) => setStatus(event.target.value)} required><option value="">Choose an action</option>{(nextStatuses[job.status] ?? []).map((value) => <option key={value} value={value}>{titleCase(value)}</option>)}</select></label>
-            )}
+            <label>Next status<select value={status} onChange={(event) => setStatus(event.target.value)} required><option value="">Choose an action</option>{(nextStatuses[job.status] ?? []).map((value) => <option key={value} value={value}>{titleCase(value)}</option>)}</select></label>
             <label>Note <span className="optional">Optional</span><textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} /></label>
             {actionError && <ErrorState error={actionError} />}
-            {(job.status === "submitted" || nextStatuses[job.status]?.length) && <button className="button button--primary button--full" disabled={busy}>{busy ? "Saving..." : job.status === "submitted" ? "Send quote" : "Update print job"}</button>}
+            {nextStatuses[job.status]?.length && <button className="button button--primary button--full" disabled={busy}>{busy ? "Saving..." : job.status === "printing" ? "Mark as ready" : "Update print job"}</button>}
           </form>
         </>}
       </section>

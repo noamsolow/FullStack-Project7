@@ -27,8 +27,22 @@ export function RequireAuth({ children, role = "customer" }) {
 
 export function GuestOnly({ children }) {
   const { user, checking } = useAuth();
+  const location = useLocation();
   if (checking) return <LoadingState label="Checking your session..." />;
   if (!user) return children;
+  const requestedLocation = location.state?.from;
+  if (requestedLocation) {
+    return (
+      <Navigate
+        to={{
+          pathname: requestedLocation.pathname,
+          search: requestedLocation.search,
+          hash: requestedLocation.hash,
+        }}
+        replace
+      />
+    );
+  }
   const target = user.role === "admin"
     ? "/admin"
     : user.role === "vendor_manager"

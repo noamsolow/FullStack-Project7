@@ -38,7 +38,7 @@ export const router = createBrowserRouter([
     element: <PublicLayout />,
     children: [
       { path: "/", element: <HomePage /> },
-      { path: "/services", element: <ServicesPage /> },
+      { path: "/services", element: customer(<ServicesPage />) },
       { path: "/eat", element: <DiscoverPage group="eat" /> },
       { path: "/shop", element: <DiscoverPage group="shop" /> },
       { path: "/vendors/:slug", element: <VendorPage /> },

@@ -26,6 +26,7 @@ const orderStatusLabels = {
   preparing: "In progress",
   ready: "Ready for pickup",
   out_for_delivery: "On the way",
+  paid: "Confirmed",
   completed: "Completed",
 };
 
