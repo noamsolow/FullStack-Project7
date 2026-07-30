@@ -18,6 +18,7 @@
     "express": "5.2.1",
     "joi": "18.2.1",
     "jsonwebtoken": "9.0.3",
+    "levgo": "file:..",
     "multer": "2.2.0",
     "mysql2": "3.22.5",
     "pdf-lib": "^1.17.1"

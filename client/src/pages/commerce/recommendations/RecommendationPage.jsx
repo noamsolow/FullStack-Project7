@@ -87,7 +87,7 @@ export function RecommendationPage() {
           {result && (
             <>
               <div className="result-heading">
-                <span className={`source-badge source-badge--${result.source}`}>{result.source === "openai" ? "AI generated" : "Smart fallback"}</span>
+                <span className={`source-badge source-badge--${result.source}`}>{result.source === "gemini" ? "AI generated" : "Smart fallback"}</span>
                 <h2>{result.summary}</h2>
                 <p>{result.safetyNotice}</p>
               </div>

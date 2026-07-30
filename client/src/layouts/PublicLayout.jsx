@@ -1,4 +1,5 @@
 import { Outlet } from "react-router-dom";
+import { ShoppingAssistant } from "../components/assistant/ShoppingAssistant.jsx";
 import { AppHeader } from "../components/navigation/AppHeader.jsx";
 import { MobileNav } from "../components/navigation/MobileNav.jsx";
 import { LevGoLogo } from "../components/brand/LevGoLogo.jsx";
@@ -18,6 +19,7 @@ export function PublicLayout() {
         <p>Food, office, and maintenance services in one secure place.</p>
       </footer>
       <MobileNav />
+      <ShoppingAssistant />
     </div>
   );
 }

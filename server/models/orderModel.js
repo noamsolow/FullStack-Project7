@@ -132,6 +132,23 @@ export async function findOrderByPublicId(publicId, executor = pool, lock = fals
   return rows[0] ?? null;
 }
 
+export async function findOrderNotificationByPublicId(publicId, executor = pool) {
+  const [rows] = await executor.query(
+    `SELECT
+      o.public_id, o.order_number, o.fulfillment_type, o.total_agorot,
+      o.currency, o.status, o.pickup_code,
+      u.email AS customer_email, u.display_name AS customer_name,
+      v.name AS vendor_name
+     FROM orders o
+     JOIN users u ON u.id = o.user_id
+     JOIN vendors v ON v.id = o.vendor_id
+     WHERE o.public_id = ?
+     LIMIT 1`,
+    [publicId],
+  );
+  return rows[0] ?? null;
+}
+
 export async function findPaymentForOrder(orderId, executor = pool, lock = false) {
   const [rows] = await executor.query(
     `SELECT

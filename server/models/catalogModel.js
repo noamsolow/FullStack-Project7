@@ -249,6 +249,35 @@ export async function listRecommendationCandidates(
   return rows.map(mapProduct);
 }
 
+export async function listShoppingAssistantCandidates(executor = pool) {
+  const [rows] = await executor.query(
+    `SELECT
+      p.public_id, p.name, p.description, p.need_type, p.price_agorot,
+      p.dietary_tags, p.allergen_text,
+      c.slug AS category_slug, c.name AS category_name,
+      v.name AS vendor_name, v.slug AS vendor_slug,
+      (
+        SELECT pi.public_id
+        FROM product_images pi
+        WHERE pi.product_id = p.id
+        ORDER BY pi.created_at
+        LIMIT 1
+      ) AS image_public_id
+     FROM products p
+     JOIN categories c ON c.id = p.category_id
+     JOIN vendors v ON v.id = p.vendor_id
+     WHERE p.deleted_at IS NULL
+       AND p.is_available = TRUE
+       AND (p.stock_quantity IS NULL OR p.stock_quantity > 0)
+       AND v.deleted_at IS NULL
+       AND v.status = 'active'
+       AND v.is_open = TRUE
+     ORDER BY c.sort_order, p.price_agorot, p.name
+     LIMIT 60`,
+  );
+  return rows.map(mapProduct);
+}
+
 export async function listDeliveryZones(vendorId, executor = pool) {
   const [rows] = await executor.query(
     `SELECT

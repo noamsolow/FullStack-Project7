@@ -5,4 +5,9 @@ export const recommendationService = {
     method: "POST",
     body,
   }),
+  chat: (messages) => apiRequest("/recommendations/chat", {
+    method: "POST",
+    body: { messages },
+    timeoutMs: 20_000,
+  }),
 };

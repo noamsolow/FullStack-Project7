@@ -18,6 +18,7 @@ const nodeEnv = process.env.NODE_ENV ?? "development";
 const jwtSecret = required("JWT_SECRET", nodeEnv === "test"
   ? "test-only-secret-that-is-at-least-32-characters"
   : undefined);
+const emailEnabled = (process.env.EMAIL_ENABLED ?? "false").toLowerCase() === "true";
 
 if (jwtSecret.length < 32) {
   throw new Error("JWT_SECRET must contain at least 32 characters");
@@ -68,9 +69,20 @@ export const config = Object.freeze({
       "http://localhost:5173/payment/cancel",
     ),
   },
-  openai: {
-    apiKey: process.env.OPENAI_API_KEY ?? "",
-    model: required("OPENAI_MODEL", "gpt-5.6-luna"),
-    timeoutMs: integer("OPENAI_TIMEOUT_MS", 12000, 1000),
+  email: {
+    enabled: emailEnabled,
+    apiKey: emailEnabled
+      ? required("RESEND_API_KEY")
+      : process.env.RESEND_API_KEY ?? "",
+    from: emailEnabled
+      ? required("EMAIL_FROM")
+      : process.env.EMAIL_FROM ?? "LevGo <onboarding@resend.dev>",
+    replyTo: process.env.EMAIL_REPLY_TO ?? "",
+    timeoutMs: integer("EMAIL_TIMEOUT_MS", 10_000, 1000),
+  },
+  gemini: {
+    apiKey: process.env.GEMINI_API_KEY ?? "",
+    model: required("GEMINI_MODEL", "gemini-flash-lite-latest"),
+    timeoutMs: integer("GEMINI_TIMEOUT_MS", 12000, 1000),
   },
 });

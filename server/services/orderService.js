@@ -43,6 +43,7 @@ import { payPalToAgorot } from "../utils/money.js";
 import { paginated, paginationFrom } from "../utils/pagination.js";
 import { calculateDeliveryFeeAgorot } from "../utils/deliveryPricing.js";
 import { canTransition, orderTransitions } from "../utils/statusRules.js";
+import { sendOrderUpdateEmail } from "./orderEmailService.js";
 import { requireMembership } from "./partnerService.js";
 
 function normalizeItems(items) {
@@ -214,6 +215,7 @@ export async function checkout(user, input, context) {
       resourcePublicId: stored.orderPublicId,
       requestId: context.requestId,
     });
+    await sendOrderUpdateEmail(stored.orderPublicId, "placed");
     return {
       orderPublicId: stored.orderPublicId,
       amountAgorot: stored.amountAgorot,
@@ -338,6 +340,7 @@ export async function captureOrderPayment(user, orderPublicId, input, context) {
     resourcePublicId: orderPublicId,
     requestId: context.requestId,
   });
+  await sendOrderUpdateEmail(orderPublicId, "paid");
   return orderDetails(user, orderPublicId);
 }
 
@@ -445,6 +448,7 @@ export async function updatePartnerOrder(user, publicIdValue, input, context) {
     summary: `${updated.status} -> ${input.status}`,
     requestId: context.requestId,
   });
+  await sendOrderUpdateEmail(publicIdValue, input.status);
   return orderDetails(user, publicIdValue);
 }
 
@@ -488,6 +492,7 @@ export async function completeCustomerOrder(user, publicIdValue, context) {
       resourcePublicId: publicIdValue,
       requestId: context.requestId,
     });
+    await sendOrderUpdateEmail(publicIdValue, "completed");
   }
   return orderDetails(user, publicIdValue);
 }
@@ -539,19 +544,24 @@ export async function cancelOrRequestOrder(user, publicIdValue, input, context) 
     resourcePublicId: publicIdValue,
     requestId: context.requestId,
   });
+  await sendOrderUpdateEmail(
+    publicIdValue,
+    result === "cancelled" ? "cancelled" : "cancellation_requested",
+  );
   return orderDetails(user, publicIdValue);
 }
 
 export async function expireReservations() {
   const expired = await findExpiredReservations();
+  let cancelled = 0;
   for (const item of expired) {
-    await withTransaction(async (connection) => {
+    const didCancel = await withTransaction(async (connection) => {
       const order = await findOrderByPublicId(item.public_id, connection, true);
       if (
         !order
         || order.status !== "pending_payment"
         || new Date(order.reservation_expires_at).getTime() >= Date.now()
-      ) return;
+      ) return false;
       await restoreOrderStock(order.id, connection);
       await setOrderStatus(order.id, "cancelled", connection);
       await addOrderHistory({
@@ -560,7 +570,12 @@ export async function expireReservations() {
         toStatus: "cancelled",
         note: "Payment reservation expired",
       }, connection);
+      return true;
     });
+    if (didCancel) {
+      cancelled += 1;
+      await sendOrderUpdateEmail(item.public_id, "cancelled");
+    }
   }
-  return expired.length;
+  return cancelled;
 }

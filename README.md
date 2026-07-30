@@ -14,8 +14,9 @@ or print center, while administrators handle campus operations and access.
   lifecycle, pickup code, and 30-day retention metadata.
 - **Report:** categorized maintenance reports, private photos, comments,
   priority, assignment, and status history.
-- **Recommend:** OpenAI Responses API with structured output and a deterministic
-  local fallback. Only pre-filtered product IDs are accepted.
+- **Recommend:** conversational Gemini API shopping assistant with
+  structured output and a deterministic local fallback. Only live catalog
+  product IDs are accepted.
 - **Portals:** separate customer, partner, and administrator login experiences
   with API-enforced ownership and role checks.
 
@@ -23,7 +24,7 @@ or print center, while administrators handle campus operations and access.
 
 React, React Router, Context, Fetch, LocalStorage, sessionStorage, semantic
 HTML, CSS Grid/Flexbox/media queries, Node.js, Express, Joi, JWT, bcrypt,
-MySQL, Multer, OpenAI Responses API, ESLint, and Git. The PayPal adapter remains
+MySQL, Multer, Gemini API, ESLint, and Git. The PayPal adapter remains
 available behind the disabled `PAYMENTS_ENABLED` feature flag.
 
 No ORM, MongoDB, Redux, Tailwind, JSON Server, FAJAX, or WebSockets are used.
@@ -50,7 +51,7 @@ Requirements:
 
 - Node.js 22 or newer
 - MySQL 8
-- An OpenAI API key only if live AI recommendations are desired
+- A Gemini API key only if live AI recommendations are desired
 
 Install packages:
 
@@ -103,10 +104,29 @@ validation. Print quotes are confirmed without an online charge. The dormant
 PayPal adapter can be restored later by configuring sandbox credentials and
 setting the flag to `true`.
 
-For OpenAI, set `OPENAI_API_KEY`. `OPENAI_MODEL` defaults to the configured
+For Gemini, set `GEMINI_API_KEY`. `GEMINI_MODEL` defaults to the configured
 current model in `.env.example`. Without a key—or when the provider is
-unavailable—the recommendation endpoint returns a clearly labeled,
-deterministic catalog fallback.
+unavailable—the recommendation page and shopping chat return a clearly
+labeled, deterministic catalog fallback.
+
+## Email notifications
+
+Order update emails use the Resend HTTP API and are disabled by default. Create
+a Resend API key, verify a sending domain, and configure the following values in
+`server/.env`:
+
+```env
+EMAIL_ENABLED=true
+RESEND_API_KEY=re_your_api_key
+EMAIL_FROM=LevGo <orders@updates.your-domain.com>
+EMAIL_REPLY_TO=support@your-domain.com
+EMAIL_TIMEOUT_MS=10000
+```
+
+The API sends customer emails after payment capture, preparation, pickup
+readiness, dispatch, completion, cancellation requests, and cancellations.
+Email provider failures are logged without rolling back the related order
+transaction.
 
 ## Verification
 

@@ -11,3 +11,21 @@ export const recommendationSchema = Joi.object({
   ).unique().max(5).default([]),
 });
 
+const chatMessageSchema = Joi.object({
+  role: Joi.string().valid("user", "assistant").required(),
+  content: Joi.string().trim().min(1).max(600).required(),
+});
+
+export const recommendationChatSchema = Joi.object({
+  messages: Joi.array()
+    .items(chatMessageSchema)
+    .min(1)
+    .max(12)
+    .required()
+    .custom((messages, helpers) => {
+      if (messages.at(-1)?.role !== "user") {
+        return helpers.message({ custom: "The last chat message must be from the user" });
+      }
+      return messages;
+    }),
+});

@@ -530,7 +530,7 @@ CREATE TABLE IF NOT EXISTS recommendation_requests (
   user_id BIGINT UNSIGNED NOT NULL,
   need_type VARCHAR(30) NOT NULL,
   budget_agorot INT UNSIGNED NOT NULL,
-  provider_used ENUM('openai', 'fallback') NOT NULL,
+  provider_used ENUM('gemini', 'openai', 'fallback') NOT NULL,
   outcome ENUM('success', 'failure') NOT NULL,
   result_count TINYINT UNSIGNED NOT NULL DEFAULT 0,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
