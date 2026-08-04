@@ -1,4 +1,4 @@
-import { pool } from "../db/pool.js";
+import { connection } from "../db/connection.js";
 
 function parseJson(value) {
   if (Array.isArray(value)) return value;
@@ -17,19 +17,19 @@ function mapProduct(row) {
   };
 }
 
-export async function listBuildings({ fetchLimit, offset }, executor = pool) {
+export async function listBuildings({ fetchLimit, offset }, executor = connection) {
   const [rows] = await executor.query(
     `SELECT id, campus_code, name, short_name, description, delivery_hint
      FROM buildings
      WHERE is_active = TRUE
-     ORDER BY CAST(campus_code AS UNSIGNED), campus_code, name
+     ORDER BY CAST(campus_code AS UNSIGNED), campus_code, name, id
      LIMIT ? OFFSET ?`,
     [fetchLimit, offset],
   );
   return rows;
 }
 
-export async function listBuildingRows(executor = pool) {
+export async function listBuildingRows(executor = connection) {
   const [rows] = await executor.query(
     `SELECT id, campus_code, name, short_name, description, delivery_hint, is_active
      FROM buildings
@@ -38,7 +38,7 @@ export async function listBuildingRows(executor = pool) {
   return rows;
 }
 
-export async function buildingExists(id, executor = pool) {
+export async function buildingExists(id, executor = connection) {
   const [rows] = await executor.query(
     "SELECT id FROM buildings WHERE id = ? AND is_active = TRUE LIMIT 1",
     [id],
@@ -46,7 +46,7 @@ export async function buildingExists(id, executor = pool) {
   return Boolean(rows[0]);
 }
 
-export async function listCategories(group, executor = pool) {
+export async function listCategories(group, executor = connection) {
   const filters = ["is_active = TRUE"];
   const params = [];
   if (group) {
@@ -63,7 +63,7 @@ export async function listCategories(group, executor = pool) {
   return rows;
 }
 
-export async function listVendors(filters, executor = pool) {
+export async function listVendors(filters, executor = connection) {
   const where = ["v.deleted_at IS NULL", "v.status = 'active'"];
   const params = [];
   if (filters.type) {
@@ -80,6 +80,9 @@ export async function listVendors(filters, executor = pool) {
   if (filters.delivery === true) {
     where.push("v.delivery_enabled = TRUE");
   }
+  if (filters.open === true) {
+    where.push("v.is_open = TRUE");
+  }
   if (filters.group === "eat") {
     where.push("v.vendor_type IN ('food_court', 'vending_machine')");
   }
@@ -87,9 +90,27 @@ export async function listVendors(filters, executor = pool) {
     where.push("v.vendor_type IN ('campus_shop', 'vending_machine', 'print_center')");
   }
   if (filters.query) {
-    where.push("(v.name LIKE ? OR v.description LIKE ?)");
+    where.push(`(
+      v.name LIKE ?
+      OR v.description LIKE ?
+      OR b.short_name LIKE ?
+      OR EXISTS (
+        SELECT 1
+        FROM products search_product
+        JOIN categories search_category ON search_category.id = search_product.category_id
+        WHERE search_product.vendor_id = v.id
+          AND search_product.deleted_at IS NULL
+          AND search_product.is_available = TRUE
+          AND (
+            search_product.name LIKE ?
+            OR search_product.description LIKE ?
+            OR search_product.sku LIKE ?
+            OR search_category.name LIKE ?
+          )
+      )
+    )`);
     const search = `%${filters.query}%`;
-    params.push(search, search);
+    params.push(search, search, search, search, search, search, search);
   }
   params.push(filters.fetchLimit, filters.offset);
 
@@ -110,14 +131,14 @@ export async function listVendors(filters, executor = pool) {
      FROM vendors v
      JOIN buildings b ON b.id = v.building_id
      WHERE ${where.join(" AND ")}
-     ORDER BY v.is_open DESC, v.name
+     ORDER BY v.is_open DESC, v.name, v.id
      LIMIT ? OFFSET ?`,
     params,
   );
   return rows;
 }
 
-export async function findVendorBySlug(slug, executor = pool) {
+export async function findVendorBySlug(slug, executor = connection) {
   const [rows] = await executor.query(
     `SELECT
       v.id, v.public_id, v.name, v.slug, v.vendor_type, v.description,
@@ -135,7 +156,7 @@ export async function findVendorBySlug(slug, executor = pool) {
   return rows[0] ?? null;
 }
 
-export async function findVendorByPublicId(publicId, executor = pool) {
+export async function findVendorByPublicId(publicId, executor = connection) {
   const [rows] = await executor.query(
     `SELECT
       v.id, v.public_id, v.building_id, v.name, v.slug, v.vendor_type,
@@ -153,7 +174,7 @@ export async function findVendorByPublicId(publicId, executor = pool) {
   return rows[0] ?? null;
 }
 
-export async function listProductsByVendor(vendorId, filters, executor = pool) {
+export async function listProductsByVendor(vendorId, filters, executor = connection) {
   const where = [
     "p.vendor_id = ?",
     "p.deleted_at IS NULL",
@@ -199,7 +220,7 @@ export async function listProductsByVendor(vendorId, filters, executor = pool) {
      FROM products p
      JOIN categories c ON c.id = p.category_id
      WHERE ${where.join(" AND ")}
-     ORDER BY p.name
+     ORDER BY p.name, p.id
      LIMIT ? OFFSET ?`,
     params,
   );
@@ -208,7 +229,7 @@ export async function listProductsByVendor(vendorId, filters, executor = pool) {
 
 export async function listRecommendationCandidates(
   { budgetAgorot, needType, category, dietary },
-  executor = pool,
+  executor = connection,
 ) {
   const where = [
     "p.deleted_at IS NULL",
@@ -249,7 +270,7 @@ export async function listRecommendationCandidates(
   return rows.map(mapProduct);
 }
 
-export async function listShoppingAssistantCandidates(executor = pool) {
+export async function listShoppingAssistantCandidates(executor = connection) {
   const [rows] = await executor.query(
     `SELECT
       p.public_id, p.name, p.description, p.need_type, p.price_agorot,
@@ -278,7 +299,7 @@ export async function listShoppingAssistantCandidates(executor = pool) {
   return rows.map(mapProduct);
 }
 
-export async function listDeliveryZones(vendorId, executor = pool) {
+export async function listDeliveryZones(vendorId, executor = connection) {
   const [rows] = await executor.query(
     `SELECT
       dz.id, b.id AS building_id, b.campus_code, b.short_name AS building_name,
@@ -297,7 +318,7 @@ export async function listDeliveryZones(vendorId, executor = pool) {
   return rows;
 }
 
-export async function findDeliveryZone(vendorId, buildingId, executor = pool) {
+export async function findDeliveryZone(vendorId, buildingId, executor = connection) {
   const [rows] = await executor.query(
     `SELECT dz.*, b.short_name AS building_name,
        b.campus_code, v.building_id AS vendor_building_id,
@@ -314,7 +335,7 @@ export async function findDeliveryZone(vendorId, buildingId, executor = pool) {
   return rows[0] ?? null;
 }
 
-export async function listPrintCenters({ fetchLimit, offset }, executor = pool) {
+export async function listPrintCenters({ fetchLimit, offset }, executor = connection) {
   const [rows] = await executor.query(
     `SELECT
       v.public_id, v.name, v.slug, v.description, v.is_open,
@@ -324,7 +345,7 @@ export async function listPrintCenters({ fetchLimit, offset }, executor = pool) 
      JOIN buildings b ON b.id = v.building_id
      WHERE v.vendor_type = 'print_center'
        AND v.status = 'active' AND v.deleted_at IS NULL
-     ORDER BY v.is_open DESC, v.name
+     ORDER BY v.is_open DESC, v.name, v.id
      LIMIT ? OFFSET ?`,
     [fetchLimit, offset],
   );

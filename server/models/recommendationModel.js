@@ -1,24 +1,6 @@
-import { pool } from "../db/pool.js";
+import { connection } from "../db/connection.js";
 
-export async function recordRecommendation(data, executor = pool) {
-  await executor.query(
-    `INSERT INTO recommendation_requests (
-      public_id, user_id, need_type, budget_agorot,
-      provider_used, outcome, result_count
-    ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [
-      data.publicId,
-      data.userId,
-      data.needType,
-      data.budgetAgorot,
-      data.providerUsed,
-      data.outcome,
-      data.resultCount,
-    ],
-  );
-}
-
-export async function listCustomerShoppingHistory(userId, executor = pool) {
+export async function listCustomerShoppingHistory(userId, executor = connection) {
   const [rows] = await executor.query(
     `SELECT
       p.public_id AS product_public_id,

@@ -25,7 +25,9 @@ Errors use:
 
 Protected routes require `Authorization: Bearer <jwt>`. JWT identity is
 reloaded from MySQL on every request. Lists accept `page` and `limit`; the
-server caps `limit` at 50.
+server caps `limit` at 50 and returns `meta.page`, `meta.limit`, and
+`meta.hasMore`. Customer-facing card lists request 6 rows at a time and
+operational tables request 10 rows at a time.
 
 ## Public catalog
 
@@ -35,7 +37,7 @@ server caps `limit` at 50.
 | GET | `/health/ready` | MySQL readiness |
 | GET | `/buildings` | Active Lev Campus locations |
 | GET | `/categories?group=eat|shop` | Product categories |
-| GET | `/vendors` | Active vendor search/filter |
+| GET | `/vendors?open=true` | Active vendor search/filter; `open` is optional |
 | GET | `/vendors/:slug` | Vendor and delivery-zone detail |
 | GET | `/vendors/:slug/products` | Available product catalog |
 | GET | `/print-centers` | Active print centers |

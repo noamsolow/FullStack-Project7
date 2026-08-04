@@ -5,7 +5,12 @@ export function notFoundHandler(request, _response, next) {
   next(new AppError(404, "ROUTE_NOT_FOUND", `No route for ${request.method} ${request.path}`));
 }
 
-export function errorHandler(error, request, response, _next) {
+export function errorHandler(error, request, response, next) {
+  if (response.headersSent) {
+    next(error);
+    return;
+  }
+
   let normalized = error;
   if (error instanceof multer.MulterError) {
     normalized = new AppError(400, "INVALID_UPLOAD", "The uploaded file is invalid");

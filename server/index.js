@@ -1,6 +1,6 @@
 import { createApp } from "./app.js";
 import { config } from "./config/index.js";
-import { assertDatabaseConnection, pool } from "./db/pool.js";
+import { assertDatabaseConnection, connection } from "./db/connection.js";
 import { startCleanupTimer } from "./services/cleanupService.js";
 
 await assertDatabaseConnection();
@@ -19,7 +19,7 @@ async function shutdown(signal) {
   console.log(JSON.stringify({ level: "info", message: `Received ${signal}` }));
   clearInterval(cleanupTimer);
   server.close(async () => {
-    await pool.end();
+    await connection.end();
     process.exit(0);
   });
   setTimeout(() => process.exit(1), 10_000).unref();

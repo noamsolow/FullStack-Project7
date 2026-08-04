@@ -1,24 +1,28 @@
 import { useCallback } from "react";
 import { Link } from "react-router-dom";
 import { PageHeader } from "../../../components/ui/PageHeader.jsx";
+import { LoadMoreButton } from "../../../components/ui/LoadMoreButton.jsx";
 import { EmptyState, ErrorState, LoadingState } from "../../../components/ui/PageState.jsx";
 import { StatusChip } from "../../../components/ui/StatusChip.jsx";
-import { useApiResource } from "../../../hooks/useApiResource.js";
+import { useLoadMoreResource } from "../../../hooks/useLoadMoreResource.js";
 import { orderService } from "../../../services/commerce/orderService.js";
 import { printService } from "../../../services/printing/printService.js";
 import { formatDate, formatMoney, titleCase } from "../../../utils/format.js";
 
 export function OrdersPage() {
-  const load = useCallback(async () => {
-    const [orders, printJobs] = await Promise.all([
-      orderService.list({ limit: 30 }),
-      printService.list({ limit: 30 }),
-    ]);
-    return { orders: orders.data, printJobs: printJobs.data };
-  }, []);
-  const { data, loading, error, reload } = useApiResource(load);
-  const orders = data?.orders ?? [];
-  const printJobs = data?.printJobs ?? [];
+  const loadOrders = useCallback(
+    ({ page, limit }) => orderService.list({ page, limit }),
+    [],
+  );
+  const loadPrintJobs = useCallback(
+    ({ page, limit }) => printService.list({ page, limit }),
+    [],
+  );
+  const orderHistory = useLoadMoreResource(loadOrders, { pageSize: 6 });
+  const printHistory = useLoadMoreResource(loadPrintJobs, { pageSize: 6 });
+  const orders = orderHistory.items;
+  const printJobs = printHistory.items;
+  const loading = orderHistory.loading || printHistory.loading;
 
   return (
     <div className="page-container">
@@ -29,8 +33,9 @@ export function OrdersPage() {
         actions={<Link className="button button--primary" to="/services">Open services</Link>}
       />
       {loading && <LoadingState label="Loading your orders..." />}
-      {error && <ErrorState error={error} onRetry={reload} />}
-      {!loading && !error && orders.length === 0 && printJobs.length === 0 && (
+      {orderHistory.error && !orders.length && <ErrorState error={orderHistory.error} onRetry={orderHistory.reload} />}
+      {printHistory.error && !printJobs.length && <ErrorState error={printHistory.error} onRetry={printHistory.reload} />}
+      {!loading && !orderHistory.error && !printHistory.error && orders.length === 0 && printJobs.length === 0 && (
         <EmptyState
           icon="orders"
           title="No orders yet"
@@ -58,6 +63,12 @@ export function OrdersPage() {
               </Link>
             ))}
           </div>
+          <LoadMoreButton
+            hasMore={printHistory.meta.hasMore}
+            loading={printHistory.loadingMore}
+            error={printHistory.error}
+            onLoadMore={printHistory.loadMore}
+          />
         </section>
       )}
 
@@ -79,6 +90,12 @@ export function OrdersPage() {
               </Link>
             ))}
           </div>
+          <LoadMoreButton
+            hasMore={orderHistory.meta.hasMore}
+            loading={orderHistory.loadingMore}
+            error={orderHistory.error}
+            onLoadMore={orderHistory.loadMore}
+          />
         </section>
       )}
     </div>

@@ -1,6 +1,6 @@
-import { pool } from "../db/pool.js";
+import { connection } from "../db/connection.js";
 
-export async function listPartnerProducts(vendorId, { fetchLimit, offset }, executor = pool) {
+export async function listPartnerProducts(vendorId, { fetchLimit, offset }, executor = connection) {
   const [rows] = await executor.query(
     `SELECT
       p.public_id, p.sku, p.name, p.description, p.need_type,
@@ -10,7 +10,7 @@ export async function listPartnerProducts(vendorId, { fetchLimit, offset }, exec
      FROM products p
      JOIN categories c ON c.id = p.category_id
      WHERE p.vendor_id = ? AND p.deleted_at IS NULL
-     ORDER BY p.updated_at DESC
+     ORDER BY p.updated_at DESC, p.id DESC
      LIMIT ? OFFSET ?`,
     [vendorId, fetchLimit, offset],
   );
@@ -22,7 +22,7 @@ export async function listPartnerProducts(vendorId, { fetchLimit, offset }, exec
   }));
 }
 
-export async function findCategoryBySlug(slug, executor = pool) {
+export async function findCategoryBySlug(slug, executor = connection) {
   const [rows] = await executor.query(
     "SELECT id, slug, group_name FROM categories WHERE slug = ? AND is_active = TRUE LIMIT 1",
     [slug],
@@ -30,7 +30,7 @@ export async function findCategoryBySlug(slug, executor = pool) {
   return rows[0] ?? null;
 }
 
-export async function createProduct(data, executor = pool) {
+export async function createProduct(data, executor = connection) {
   const [result] = await executor.query(
     `INSERT INTO products (
       public_id, vendor_id, category_id, sku, name, description, need_type,
@@ -54,7 +54,7 @@ export async function createProduct(data, executor = pool) {
   return result.insertId;
 }
 
-export async function findPartnerProduct(publicId, vendorId, executor = pool) {
+export async function findPartnerProduct(publicId, vendorId, executor = connection) {
   const [rows] = await executor.query(
     `SELECT p.*, c.slug AS category_slug, c.name AS category_name
      FROM products p
@@ -66,7 +66,7 @@ export async function findPartnerProduct(publicId, vendorId, executor = pool) {
   return rows[0] ?? null;
 }
 
-export async function updateProduct(productId, data, executor = pool) {
+export async function updateProduct(productId, data, executor = connection) {
   await executor.query(
     `UPDATE products SET
       category_id = ?, sku = ?, name = ?, description = ?, need_type = ?,
@@ -89,14 +89,14 @@ export async function updateProduct(productId, data, executor = pool) {
   );
 }
 
-export async function softDeleteProduct(productId, executor = pool) {
+export async function softDeleteProduct(productId, executor = connection) {
   await executor.query(
     `UPDATE products SET deleted_at = CURRENT_TIMESTAMP, is_available = FALSE WHERE id = ?`,
     [productId],
   );
 }
 
-export async function insertProductImage(data, executor = pool) {
+export async function insertProductImage(data, executor = connection) {
   const [result] = await executor.query(
     `INSERT INTO product_images (
       public_id, product_id, original_name, mime_type,
@@ -115,7 +115,7 @@ export async function insertProductImage(data, executor = pool) {
   return result.insertId;
 }
 
-export async function findProductImage(publicId, executor = pool) {
+export async function findProductImage(publicId, executor = connection) {
   const [rows] = await executor.query(
     `SELECT pi.*, p.vendor_id
      FROM product_images pi
@@ -127,7 +127,7 @@ export async function findProductImage(publicId, executor = pool) {
   return rows[0] ?? null;
 }
 
-export async function upsertDeliveryZone(vendorId, data, executor = pool) {
+export async function upsertDeliveryZone(vendorId, data, executor = connection) {
   await executor.query(
     `INSERT INTO vendor_delivery_zones (
       vendor_id, building_id, fee_agorot, minimum_order_agorot,
@@ -151,7 +151,7 @@ export async function upsertDeliveryZone(vendorId, data, executor = pool) {
   );
 }
 
-export async function updateVendorProfile(vendorId, data, executor = pool) {
+export async function updateVendorProfile(vendorId, data, executor = connection) {
   await executor.query(
     `UPDATE vendors SET
       description = ?, contact_email = ?, contact_phone = ?,

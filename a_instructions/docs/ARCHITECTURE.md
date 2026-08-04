@@ -38,6 +38,7 @@ server/
   index.js                 process bootstrap and graceful shutdown
   app.js                   Express composition
   config/                  environment parsing
+  db/connection.js         single shared MySQL connection and transactions
   routes/                  HTTP method/path/middleware chains
   middleware/              auth, role, validation, uploads, rate limits
   controllers/             HTTP adapters
@@ -97,7 +98,15 @@ client/src/
 ## Data loading
 
 - Every growing list is paginated with a server maximum of 50.
+- Growing client lists use a shared Load More hook. Card-based screens append
+  6 records per request and operational tables append 10.
+- A filter or search change resets a list to page 1. Additional-page failures
+  preserve records that were already loaded and can be retried.
+- Models fetch `limit + 1` rows and use deterministic ordering to calculate
+  `hasMore` without a separate count query.
 - The client caches safe GET requests in memory, deduplicates concurrent loads,
   and invalidates affected prefixes after mutations.
 - Related detail is loaded only when its route or panel opens.
+- Small reference collections that must be complete for a form or campus map
+  remain bounded, full-list requests rather than Load More screens.
 - Order, print, and ticket status updates use polling rather than WebSockets.

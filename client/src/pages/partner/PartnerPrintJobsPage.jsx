@@ -1,8 +1,10 @@
 import { useCallback, useState } from "react";
 import { PageHeader } from "../../components/ui/PageHeader.jsx";
+import { LoadMoreButton } from "../../components/ui/LoadMoreButton.jsx";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/PageState.jsx";
 import { StatusChip } from "../../components/ui/StatusChip.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
+import { useLoadMoreResource } from "../../hooks/useLoadMoreResource.js";
 import { downloadPrivateFile } from "../../services/core/apiClient.js";
 import { partnerService } from "../../services/portals/partnerService.js";
 import { formatDate, formatMoney, titleCase } from "../../utils/format.js";
@@ -17,15 +19,18 @@ const nextStatuses = {
 
 export function PartnerPrintJobsPage() {
   const [selected, setSelected] = useState(null);
-  const load = useCallback(() => partnerService.printJobs({ limit: 50 }), []);
-  const { data, loading, error, reload } = useApiResource(load);
-  const jobs = data?.data ?? [];
+  const load = useCallback(
+    ({ page, limit }) => partnerService.printJobs({ page, limit }),
+    [],
+  );
+  const history = useLoadMoreResource(load, { pageSize: 10 });
+  const jobs = history.items;
   return (
     <div className="portal-page">
       <PageHeader eyebrow="Private printing" title="Print jobs" description="Review files securely, then update printing and pickup status. Prices are calculated automatically." />
-      {loading && <LoadingState />}
-      {error && <ErrorState error={error} onRetry={reload} />}
-      {!loading && !error && !jobs.length && <EmptyState icon="print" title="No print jobs" message="Customer uploads assigned to your print center will appear here." />}
+      {history.loading && <LoadingState />}
+      {history.error && !jobs.length && <ErrorState error={history.error} onRetry={history.reload} />}
+      {!history.loading && !history.error && !jobs.length && <EmptyState icon="print" title="No print jobs" message="Customer uploads assigned to your print center will appear here." />}
       <div className="data-table-wrap">
         <table className="data-table">
           <thead><tr><th>Job</th><th>Customer</th><th>Settings</th><th>Fixed price</th><th>Status</th><th></th></tr></thead>
@@ -41,7 +46,8 @@ export function PartnerPrintJobsPage() {
           ))}</tbody>
         </table>
       </div>
-      {selected && <PrintManager publicId={selected.public_id} onClose={() => setSelected(null)} onSaved={() => { setSelected(null); reload(); }} />}
+      <LoadMoreButton hasMore={history.meta.hasMore} loading={history.loadingMore} error={jobs.length ? history.error : null} onLoadMore={history.loadMore} />
+      {selected && <PrintManager publicId={selected.public_id} onClose={() => setSelected(null)} onSaved={() => { setSelected(null); history.reload(); }} />}
     </div>
   );
 }

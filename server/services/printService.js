@@ -1,4 +1,4 @@
-import { withTransaction } from "../db/pool.js";
+import { withTransaction } from "../db/connection.js";
 import { config } from "../config/index.js";
 import { findVendorByPublicId } from "../models/catalogModel.js";
 import {

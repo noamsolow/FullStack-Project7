@@ -1,4 +1,4 @@
-import { pool } from "../db/pool.js";
+import { connection } from "../db/connection.js";
 import { hashIp, publicId } from "../utils/identifiers.js";
 import { config } from "../config/index.js";
 
@@ -11,7 +11,7 @@ export async function writeAudit({
   summary = null,
   requestId = null,
   ip = null,
-}, executor = pool) {
+}, executor = connection) {
   await executor.query(
     `INSERT INTO audit_logs (
       public_id, actor_user_id, action, resource_type, resource_public_id,
@@ -31,12 +31,19 @@ export async function writeAudit({
   );
 }
 
-export async function listAuditLogs({ fetchLimit, offset, action }, executor = pool) {
+export async function listAuditLogs({ fetchLimit, offset, query }, executor = connection) {
   const where = [];
   const params = [];
-  if (action) {
-    where.push("a.action = ?");
-    params.push(action);
+  if (query) {
+    where.push(`(
+      a.action LIKE ?
+      OR a.resource_type LIKE ?
+      OR a.resource_public_id LIKE ?
+      OR a.summary LIKE ?
+      OR u.display_name LIKE ?
+    )`);
+    const search = `%${query}%`;
+    params.push(search, search, search, search, search);
   }
   params.push(fetchLimit, offset);
   const [rows] = await executor.query(
@@ -47,7 +54,7 @@ export async function listAuditLogs({ fetchLimit, offset, action }, executor = p
      FROM audit_logs a
      LEFT JOIN users u ON u.id = a.actor_user_id
      ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
-     ORDER BY a.created_at DESC
+     ORDER BY a.created_at DESC, a.id DESC
      LIMIT ? OFFSET ?`,
     params,
   );

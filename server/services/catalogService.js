@@ -33,10 +33,7 @@ export async function vendors(query) {
 export async function vendorDetails(slug) {
   const vendor = await findVendorBySlug(slug);
   if (!vendor) throw notFound("Vendor not found");
-  const [zones, categoryRows] = await Promise.all([
-    vendor.delivery_enabled ? listDeliveryZones(vendor.id) : [],
-    listCategories(),
-  ]);
+  const zones = vendor.delivery_enabled ? await listDeliveryZones(vendor.id) : [];
   delete vendor.id;
   return {
     ...withCampusMapPosition(vendor),
@@ -44,7 +41,6 @@ export async function vendorDetails(slug) {
       ...withCampusMapPosition(zone),
       fee_agorot: calculateDeliveryFeeAgorot(zone),
     })),
-    categories: categoryRows,
   };
 }
 

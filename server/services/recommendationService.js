@@ -2,15 +2,11 @@ import {
   listRecommendationCandidates,
   listShoppingAssistantCandidates,
 } from "../models/catalogModel.js";
-import {
-  listCustomerShoppingHistory,
-  recordRecommendation,
-} from "../models/recommendationModel.js";
+import { listCustomerShoppingHistory } from "../models/recommendationModel.js";
 import {
   requestRecommendations,
   requestShoppingChat,
 } from "../integrations/geminiClient.js";
-import { publicId } from "../utils/identifiers.js";
 
 function recommendationFallback(candidates, preferences) {
   const ranked = [...candidates]
@@ -285,16 +281,6 @@ export async function recommend(user, input) {
 
   const safeRecommendations = safeProductRecommendations(result, candidates);
 
-  await recordRecommendation({
-    publicId: publicId(),
-    userId: user.id,
-    needType: input.needType,
-    budgetAgorot: input.budgetAgorot,
-    providerUsed,
-    outcome: "success",
-    resultCount: safeRecommendations.length,
-  });
-
   return {
     source: providerUsed,
     summary: String(result.summary ?? "").slice(0, 500),
@@ -343,16 +329,6 @@ export async function chat(user, input) {
   }
 
   const safeRecommendations = safeProductRecommendations(result, candidates);
-  await recordRecommendation({
-    publicId: publicId(),
-    userId: user.id,
-    needType: "chat",
-    budgetAgorot: fallbackResult.budgetAgorot ?? 0,
-    providerUsed,
-    outcome: "success",
-    resultCount: safeRecommendations.length,
-  });
-
   return {
     source: providerUsed,
     reply: String(result.reply ?? "Tell me what you are shopping for.").slice(0, 1200),

@@ -1,9 +1,11 @@
 import { useCallback, useRef, useState } from "react";
 import { ConfirmDialog } from "../../components/ui/ConfirmDialog.jsx";
+import { LoadMoreButton } from "../../components/ui/LoadMoreButton.jsx";
 import { PageHeader } from "../../components/ui/PageHeader.jsx";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/PageState.jsx";
 import { StatusChip } from "../../components/ui/StatusChip.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
+import { useLoadMoreResource } from "../../hooks/useLoadMoreResource.js";
 import { catalogService } from "../../services/catalog/catalogService.js";
 import { partnerService } from "../../services/portals/partnerService.js";
 import { formatMoney, titleCase } from "../../utils/format.js";
@@ -41,20 +43,19 @@ export function PartnerProductsPage() {
   const [editor, setEditor] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [actionError, setActionError] = useState(null);
-  const load = useCallback(async () => {
-    const [products, categories] = await Promise.all([
-      partnerService.products({ limit: 50 }),
-      catalogService.categories(),
-    ]);
-    return { products: products.data, categories: categories.data };
-  }, []);
-  const { data, loading, error, reload } = useApiResource(load);
+  const loadProducts = useCallback(
+    ({ page, limit }) => partnerService.products({ page, limit }),
+    [],
+  );
+  const loadCategories = useCallback(() => catalogService.categories(), []);
+  const products = useLoadMoreResource(loadProducts, { pageSize: 10 });
+  const categories = useApiResource(loadCategories);
 
   async function remove() {
     try {
       await partnerService.deleteProduct(confirmDelete.public_id);
       setConfirmDelete(null);
-      reload();
+      products.reload();
     } catch (caught) {
       setActionError(caught);
     }
@@ -68,15 +69,16 @@ export function PartnerProductsPage() {
         description="Your public menu and supply inventory."
         actions={<button className="button button--primary" onClick={() => setEditor({ product: null, form: toForm(null) })}>Add product</button>}
       />
-      {loading && <LoadingState />}
-      {error && <ErrorState error={error} onRetry={reload} />}
+      {(products.loading || categories.loading) && <LoadingState />}
+      {products.error && !products.items.length && <ErrorState error={products.error} onRetry={products.reload} />}
+      {categories.error && <ErrorState error={categories.error} onRetry={categories.reload} />}
       {actionError && <ErrorState error={actionError} />}
-      {!loading && data?.products.length === 0 && <EmptyState title="No products yet" message="Add your first item to open the storefront." />}
+      {!products.loading && !products.error && products.items.length === 0 && <EmptyState title="No products yet" message="Add your first item to open the storefront." />}
       <div className="data-table-wrap">
         <table className="data-table">
           <thead><tr><th>Product</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th><span className="sr-only">Actions</span></th></tr></thead>
           <tbody>
-            {data?.products.map((product) => (
+            {products.items.map((product) => (
               <tr key={product.public_id}>
                 <td><strong>{product.name}</strong><small>{product.sku}</small></td>
                 <td>{product.category_name}</td>
@@ -89,12 +91,18 @@ export function PartnerProductsPage() {
           </tbody>
         </table>
       </div>
+      <LoadMoreButton
+        hasMore={products.meta.hasMore}
+        loading={products.loadingMore}
+        error={products.items.length ? products.error : null}
+        onLoadMore={products.loadMore}
+      />
       {editor && (
         <ProductEditor
           state={editor}
-          categories={data?.categories ?? []}
+          categories={categories.data?.data ?? []}
           onClose={() => setEditor(null)}
-          onSaved={() => { setEditor(null); reload(); }}
+          onSaved={() => { setEditor(null); products.reload(); }}
         />
       )}
       <ConfirmDialog
@@ -103,8 +111,8 @@ export function PartnerProductsPage() {
         message={`${confirmDelete?.name ?? "This product"} will no longer appear in the catalog. Existing order history is preserved.`}
         confirmLabel="Remove product"
         destructive
-        onCancel={() => setConfirmDelete(null)}
-        onConfirm={remove}
+      onCancel={() => setConfirmDelete(null)}
+      onConfirm={remove}
       />
     </div>
   );

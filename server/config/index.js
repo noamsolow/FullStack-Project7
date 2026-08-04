@@ -53,7 +53,6 @@ export const config = Object.freeze({
     database: required("DB_NAME", "project7"),
     user: required("DB_USER", "levgo_app"),
     password: required("DB_PASSWORD", nodeEnv === "test" ? "test" : undefined),
-    connectionLimit: integer("DB_CONNECTION_LIMIT", 10, 1),
   },
   paypal: {
     enabled: (process.env.PAYMENTS_ENABLED ?? "false").toLowerCase() === "true",

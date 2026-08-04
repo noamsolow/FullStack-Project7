@@ -1,8 +1,10 @@
 import { useCallback, useState } from "react";
 import { PageHeader } from "../../components/ui/PageHeader.jsx";
+import { LoadMoreButton } from "../../components/ui/LoadMoreButton.jsx";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/PageState.jsx";
 import { StatusChip } from "../../components/ui/StatusChip.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
+import { useLoadMoreResource } from "../../hooks/useLoadMoreResource.js";
 import { adminService } from "../../services/portals/adminService.js";
 import { formatDate, titleCase } from "../../utils/format.js";
 
@@ -17,9 +19,12 @@ const transitions = {
 export function AdminMaintenancePage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [selected, setSelected] = useState(null);
-  const load = useCallback(() => adminService.maintenance({ limit: 50, status: statusFilter }), [statusFilter]);
-  const { data, loading, error, reload } = useApiResource(load);
-  const tickets = data?.data ?? [];
+  const load = useCallback(
+    ({ page, limit }) => adminService.maintenance({ page, limit, status: statusFilter }),
+    [statusFilter],
+  );
+  const queue = useLoadMoreResource(load, { pageSize: 10 });
+  const tickets = queue.items;
   return (
     <div className="portal-page">
       <PageHeader
@@ -28,9 +33,9 @@ export function AdminMaintenancePage() {
         description="Prioritize, assign, update, and discuss campus issues."
         actions={<select aria-label="Filter by status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="">All statuses</option>{["open", "acknowledged", "in_progress", "waiting_for_user", "resolved", "closed", "rejected"].map((value) => <option key={value} value={value}>{titleCase(value)}</option>)}</select>}
       />
-      {loading && <LoadingState />}
-      {error && <ErrorState error={error} onRetry={reload} />}
-      {!loading && !error && !tickets.length && <EmptyState icon="report" title="Queue is clear" message="No maintenance tickets match this filter." />}
+      {queue.loading && <LoadingState />}
+      {queue.error && !tickets.length && <ErrorState error={queue.error} onRetry={queue.reload} />}
+      {!queue.loading && !queue.error && !tickets.length && <EmptyState icon="report" title="Queue is clear" message="No maintenance tickets match this filter." />}
       <div className="data-table-wrap">
         <table className="data-table">
           <thead><tr><th>Ticket</th><th>Location</th><th>Reporter</th><th>Priority</th><th>Status</th><th></th></tr></thead>
@@ -46,7 +51,8 @@ export function AdminMaintenancePage() {
           ))}</tbody>
         </table>
       </div>
-      {selected && <MaintenanceManager publicId={selected.public_id} onClose={() => setSelected(null)} onSaved={() => { setSelected(null); reload(); }} />}
+      <LoadMoreButton hasMore={queue.meta.hasMore} loading={queue.loadingMore} error={tickets.length ? queue.error : null} onLoadMore={queue.loadMore} />
+      {selected && <MaintenanceManager publicId={selected.public_id} onClose={() => setSelected(null)} onSaved={() => { setSelected(null); queue.reload(); }} />}
     </div>
   );
 }

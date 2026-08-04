@@ -32,7 +32,7 @@ export const buildingSchema = Joi.object({
 
 export const auditQuerySchema = Joi.object({
   ...pagination,
-  action: Joi.string().trim().max(80),
+  query: Joi.string().trim().max(160),
 });
 
 export const adminOrdersQuerySchema = Joi.object({

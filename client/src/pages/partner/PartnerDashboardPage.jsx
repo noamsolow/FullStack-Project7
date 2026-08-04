@@ -11,25 +11,25 @@ export function PartnerDashboardPage() {
   const load = useCallback(async () => {
     const vendor = await partnerService.vendor();
     const [products, orders, printJobs] = await Promise.all([
-      partnerService.products({ limit: 50 }),
-      partnerService.orders({ limit: 50 }),
+      partnerService.products({ limit: 6 }),
+      partnerService.orders({ limit: 6 }),
       vendor.data.vendor_type === "print_center"
-        ? partnerService.printJobs({ limit: 50 })
-        : Promise.resolve({ data: [] }),
+        ? partnerService.printJobs({ limit: 6 })
+        : Promise.resolve({ data: [], meta: { hasMore: false } }),
     ]);
-    return { vendor: vendor.data, products: products.data, orders: orders.data, printJobs: printJobs.data };
+    return { vendor: vendor.data, products, orders, printJobs };
   }, []);
   const { data, loading, error, reload } = useApiResource(load);
   if (loading) return <LoadingState label="Opening partner workspace..." />;
   if (error) return <ErrorState error={error} onRetry={reload} />;
 
-  const liveOrders = data.orders.filter((item) => !["completed", "cancelled"].includes(item.status));
-  const openPrints = data.printJobs.filter((item) => !["completed", "cancelled", "rejected"].includes(item.status));
+  const liveOrders = data.orders.data.filter((item) => !["completed", "cancelled"].includes(item.status));
+  const openPrints = data.printJobs.data.filter((item) => !["completed", "cancelled", "rejected"].includes(item.status));
   const isPrintCenter = data.vendor.vendor_type === "print_center";
-  const revenue = data.orders
+  const revenue = data.orders.data
     .filter((item) => item.status !== "cancelled")
     .reduce((sum, item) => sum + item.total_agorot, 0)
-    + data.printJobs
+    + data.printJobs.data
       .filter((item) => !["cancelled", "rejected"].includes(item.status))
       .reduce((sum, item) => sum + (item.quote_agorot ?? 0), 0);
   const attentionItems = isPrintCenter ? openPrints : liveOrders;
@@ -41,10 +41,10 @@ export function PartnerDashboardPage() {
         <StatusChip status={data.vendor.is_open ? "open" : "closed"} />
       </header>
       <section className="stat-grid">
-        <article><span><Icon name={isPrintCenter ? "print" : "orders"} /></span><div><strong>{isPrintCenter ? openPrints.length : liveOrders.length}</strong><small>{isPrintCenter ? "Active print jobs" : "Active orders"}</small></div></article>
+        <article><span><Icon name={isPrintCenter ? "print" : "orders"} /></span><div><strong>{isPrintCenter ? openPrints.length : liveOrders.length}</strong><small>{isPrintCenter ? "Active among recent prints" : "Active among recent orders"}</small></div></article>
         <article><span><Icon name={isPrintCenter ? "check" : "building"} /></span><div><strong>{isPrintCenter ? openPrints.filter((item) => ["submitted", "paid", "printing"].includes(item.status)).length : data.vendor.deliveryZones.length}</strong><small>{isPrintCenter ? "Ready for action" : "Delivery zones"}</small></div></article>
-        <article><span><Icon name="shop" /></span><div><strong>{data.products.length}</strong><small>Products</small></div></article>
-        <article><span><Icon name="shield" /></span><div><strong>{formatMoney(revenue)}</strong><small>{isPrintCenter ? "Visible print value" : "Visible order value"}</small></div></article>
+        <article><span><Icon name="shop" /></span><div><strong>{data.products.data.length}{data.products.meta?.hasMore ? "+" : ""}</strong><small>Visible products</small></div></article>
+        <article><span><Icon name="shield" /></span><div><strong>{formatMoney(revenue)}</strong><small>{isPrintCenter ? "Recent print value" : "Recent order value"}</small></div></article>
       </section>
       <div className="portal-dashboard-grid">
         <section className="card">
@@ -56,7 +56,7 @@ export function PartnerDashboardPage() {
                 <StatusChip status={item.status} />
               </Link>
             ))}
-            {!attentionItems.length && <p className="muted">{isPrintCenter ? "No active print jobs." : "No active orders."}</p>}
+            {!attentionItems.length && <p className="muted">{isPrintCenter ? "No active jobs among recent prints." : "No active orders among recent orders."}</p>}
           </div>
         </section>
         <section className="card">

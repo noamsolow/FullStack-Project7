@@ -12,6 +12,7 @@ export async function authenticate(request, _response, next) {
 
     const token = authorization.slice("Bearer ".length).trim();
     const payload = jwt.verify(token, config.jwt.secret, {
+      algorithms: ["HS256"],
       issuer: config.jwt.issuer,
       audience: config.jwt.audience,
     });

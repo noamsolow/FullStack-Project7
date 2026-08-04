@@ -1,5 +1,5 @@
 import { config } from "../config/index.js";
-import { withTransaction } from "../db/pool.js";
+import { withTransaction } from "../db/connection.js";
 import { buildingExists } from "../models/catalogModel.js";
 import {
   addMaintenanceHistory,

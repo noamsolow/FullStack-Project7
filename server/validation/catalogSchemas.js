@@ -16,6 +16,7 @@ export const vendorsQuerySchema = Joi.object({
   buildingId: Joi.number().integer().positive(),
   pickup: Joi.boolean(),
   delivery: Joi.boolean(),
+  open: Joi.boolean(),
   query: Joi.string().trim().max(80),
 });
 

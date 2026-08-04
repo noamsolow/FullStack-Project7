@@ -4,29 +4,6 @@ CREATE DATABASE IF NOT EXISTS project7
 
 USE project7;
 
-CREATE TABLE IF NOT EXISTS users (
-  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  public_id CHAR(36) NOT NULL,
-  email VARCHAR(254) NOT NULL,
-  display_name VARCHAR(100) NOT NULL,
-  phone VARCHAR(30) NULL,
-  customer_type ENUM('student', 'teacher') NULL,
-  role ENUM('customer', 'vendor_manager', 'admin') NOT NULL DEFAULT 'customer',
-  password_hash VARCHAR(255) NOT NULL,
-  blocked_at DATETIME NULL,
-  deleted_at DATETIME NULL,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  CONSTRAINT uq_users_public_id UNIQUE (public_id),
-  CONSTRAINT uq_users_email UNIQUE (email),
-  CONSTRAINT chk_users_customer_type CHECK (
-    (role = 'customer' AND customer_type IS NOT NULL)
-    OR (role <> 'customer' AND customer_type IS NULL)
-  ),
-  INDEX idx_users_role_active (role, blocked_at, deleted_at),
-  INDEX idx_users_created_at (created_at)
-) ENGINE=InnoDB;
-
 CREATE TABLE IF NOT EXISTS buildings (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   campus_code VARCHAR(20) NOT NULL,
@@ -74,33 +51,32 @@ CREATE TABLE IF NOT EXISTS vendors (
   INDEX idx_vendors_name (name)
 ) ENGINE=InnoDB;
 
-CREATE TABLE IF NOT EXISTS vendor_memberships (
-  user_id BIGINT UNSIGNED NOT NULL,
-  vendor_id BIGINT UNSIGNED NOT NULL,
-  membership_role ENUM('owner', 'manager') NOT NULL DEFAULT 'manager',
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (user_id, vendor_id),
-  CONSTRAINT fk_vendor_memberships_user
-    FOREIGN KEY (user_id) REFERENCES users(id),
-  CONSTRAINT fk_vendor_memberships_vendor
-    FOREIGN KEY (vendor_id) REFERENCES vendors(id),
-  INDEX idx_vendor_memberships_vendor (vendor_id)
-) ENGINE=InnoDB;
-
-CREATE TABLE IF NOT EXISTS vendor_hours (
+CREATE TABLE IF NOT EXISTS users (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  vendor_id BIGINT UNSIGNED NOT NULL,
-  weekday TINYINT UNSIGNED NOT NULL,
-  opens_at TIME NULL,
-  closes_at TIME NULL,
-  is_closed BOOLEAN NOT NULL DEFAULT FALSE,
-  CONSTRAINT fk_vendor_hours_vendor
+  public_id CHAR(36) NOT NULL,
+  email VARCHAR(254) NOT NULL,
+  display_name VARCHAR(100) NOT NULL,
+  phone VARCHAR(30) NULL,
+  customer_type ENUM('student', 'teacher') NULL,
+  role ENUM('customer', 'vendor_manager', 'admin') NOT NULL DEFAULT 'customer',
+  vendor_id BIGINT UNSIGNED NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  blocked_at DATETIME NULL,
+  deleted_at DATETIME NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_users_vendor
     FOREIGN KEY (vendor_id) REFERENCES vendors(id),
-  CONSTRAINT uq_vendor_hours_day UNIQUE (vendor_id, weekday),
-  CONSTRAINT chk_vendor_hours_weekday CHECK (weekday BETWEEN 0 AND 6),
-  CONSTRAINT chk_vendor_hours_times CHECK (
-    is_closed = TRUE OR (opens_at IS NOT NULL AND closes_at IS NOT NULL AND closes_at > opens_at)
-  )
+  CONSTRAINT uq_users_public_id UNIQUE (public_id),
+  CONSTRAINT uq_users_email UNIQUE (email),
+  CONSTRAINT chk_users_role_details CHECK (
+    (role = 'customer' AND customer_type IS NOT NULL AND vendor_id IS NULL)
+    OR (role = 'vendor_manager' AND customer_type IS NULL AND vendor_id IS NOT NULL)
+    OR (role = 'admin' AND customer_type IS NULL AND vendor_id IS NULL)
+  ),
+  INDEX idx_users_role_active (role, blocked_at, deleted_at),
+  INDEX idx_users_vendor (vendor_id),
+  INDEX idx_users_created_at (created_at)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS vendor_delivery_zones (
@@ -524,18 +500,3 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   INDEX idx_audit_resource (resource_type, resource_public_id)
 ) ENGINE=InnoDB;
 
-CREATE TABLE IF NOT EXISTS recommendation_requests (
-  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  public_id CHAR(36) NOT NULL,
-  user_id BIGINT UNSIGNED NOT NULL,
-  need_type VARCHAR(30) NOT NULL,
-  budget_agorot INT UNSIGNED NOT NULL,
-  provider_used ENUM('gemini', 'openai', 'fallback') NOT NULL,
-  outcome ENUM('success', 'failure') NOT NULL,
-  result_count TINYINT UNSIGNED NOT NULL DEFAULT 0,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_recommendations_user
-    FOREIGN KEY (user_id) REFERENCES users(id),
-  CONSTRAINT uq_recommendations_public_id UNIQUE (public_id),
-  INDEX idx_recommendations_user (user_id, created_at)
-) ENGINE=InnoDB;

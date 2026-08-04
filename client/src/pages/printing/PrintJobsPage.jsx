@@ -1,15 +1,19 @@
 import { useCallback } from "react";
 import { Link } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader.jsx";
+import { LoadMoreButton } from "../../components/ui/LoadMoreButton.jsx";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/PageState.jsx";
 import { StatusChip } from "../../components/ui/StatusChip.jsx";
-import { useApiResource } from "../../hooks/useApiResource.js";
+import { useLoadMoreResource } from "../../hooks/useLoadMoreResource.js";
 import { printService } from "../../services/printing/printService.js";
 import { formatDate, formatMoney } from "../../utils/format.js";
 
 export function PrintJobsPage() {
-  const load = useCallback(() => printService.list({ limit: 30 }), []);
-  const { data, loading, error, reload } = useApiResource(load, [load]);
+  const load = useCallback(
+    ({ page, limit }) => printService.list({ page, limit }),
+    [],
+  );
+  const jobs = useLoadMoreResource(load, { pageSize: 6 });
   return (
     <div className="page-container">
       <PageHeader
@@ -18,13 +22,13 @@ export function PrintJobsPage() {
         description="Fixed pricing, preparation, and pickup in one timeline."
         actions={<Link to="/print" className="button button--primary">New print job</Link>}
       />
-      {loading && <LoadingState />}
-      {error && <ErrorState error={error} onRetry={reload} />}
-      {!loading && !data?.data?.length && (
+      {jobs.loading && <LoadingState />}
+      {jobs.error && !jobs.items.length && <ErrorState error={jobs.error} onRetry={jobs.reload} />}
+      {!jobs.loading && !jobs.error && !jobs.items.length && (
         <EmptyState title="No print jobs yet" message="Upload a PDF when you are ready." />
       )}
-      <div className="record-list">
-        {data?.data?.map((job) => (
+      <div className="record-list" aria-live="polite">
+        {jobs.items.map((job) => (
           <Link key={job.public_id} to={`/print/${job.public_id}`} className="record-row">
             <span className="record-row__code">{job.job_number}</span>
             <span>
@@ -44,6 +48,12 @@ export function PrintJobsPage() {
           </Link>
         ))}
       </div>
+      <LoadMoreButton
+        hasMore={jobs.meta.hasMore}
+        loading={jobs.loadingMore}
+        error={jobs.items.length ? jobs.error : null}
+        onLoadMore={jobs.loadMore}
+      />
     </div>
   );
 }

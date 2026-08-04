@@ -2,9 +2,11 @@ import { useCallback, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon.jsx";
 import { PageHeader } from "../../components/ui/PageHeader.jsx";
+import { LoadMoreButton } from "../../components/ui/LoadMoreButton.jsx";
 import { ErrorState, LoadingState } from "../../components/ui/PageState.jsx";
 import { StatusChip } from "../../components/ui/StatusChip.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
+import { useLoadMoreResource } from "../../hooks/useLoadMoreResource.js";
 import { catalogService } from "../../services/catalog/catalogService.js";
 import { maintenanceService } from "../../services/maintenance/maintenanceService.js";
 import { formatDate, titleCase } from "../../utils/format.js";
@@ -26,9 +28,12 @@ export function MaintenancePage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const loadBuildings = useCallback(() => catalogService.buildings({ limit: 50 }), []);
-  const loadTickets = useCallback(() => maintenanceService.list({ limit: 8 }), []);
+  const loadTickets = useCallback(
+    ({ page, limit }) => maintenanceService.list({ page, limit }),
+    [],
+  );
   const buildings = useApiResource(loadBuildings, [loadBuildings]);
-  const tickets = useApiResource(loadTickets, [loadTickets]);
+  const tickets = useLoadMoreResource(loadTickets, { pageSize: 6 });
 
   function update(event) {
     setForm((current) => ({ ...current, [event.target.name]: event.target.value }));
@@ -105,8 +110,9 @@ export function MaintenancePage() {
         <aside className="ticket-panel">
           <div className="ticket-panel__heading"><div><span className="eyebrow">Your reports</span><h2>Recent activity</h2></div></div>
           {tickets.loading && <LoadingState />}
-          {tickets.error && <ErrorState error={tickets.error} onRetry={tickets.reload} />}
-          {tickets.data?.data?.map((ticket) => (
+          {tickets.error && !tickets.items.length && <ErrorState error={tickets.error} onRetry={tickets.reload} />}
+          <div aria-live="polite">
+          {tickets.items.map((ticket) => (
             <Link key={ticket.public_id} to={`/report/${ticket.public_id}`} className="ticket-card">
               <div><span className="ticket-number">{ticket.ticket_number}</span><StatusChip status={ticket.status} /></div>
               <h3>{ticket.title}</h3>
@@ -114,7 +120,14 @@ export function MaintenancePage() {
               <small>{formatDate(ticket.created_at)}</small>
             </Link>
           ))}
-          {!tickets.loading && !tickets.data?.data?.length && <p className="muted">No reports yet. That is usually good news.</p>}
+          </div>
+          {!tickets.loading && !tickets.error && !tickets.items.length && <p className="muted">No reports yet. That is usually good news.</p>}
+          <LoadMoreButton
+            hasMore={tickets.meta.hasMore}
+            loading={tickets.loadingMore}
+            error={tickets.items.length ? tickets.error : null}
+            onLoadMore={tickets.loadMore}
+          />
         </aside>
       </div>
     </div>

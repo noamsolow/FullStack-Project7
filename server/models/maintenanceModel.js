@@ -1,4 +1,4 @@
-import { pool } from "../db/pool.js";
+import { connection } from "../db/connection.js";
 
 export async function createMaintenanceTicket(data, executor) {
   const [result] = await executor.query(
@@ -39,7 +39,7 @@ export async function insertMaintenanceAttachment(data, executor) {
   );
 }
 
-export async function addMaintenanceHistory(data, executor = pool) {
+export async function addMaintenanceHistory(data, executor = connection) {
   await executor.query(
     `INSERT INTO maintenance_history (
       maintenance_ticket_id, actor_user_id, event_type,
@@ -56,7 +56,7 @@ export async function addMaintenanceHistory(data, executor = pool) {
   );
 }
 
-export async function findMaintenanceTicket(publicId, executor = pool, lock = false) {
+export async function findMaintenanceTicket(publicId, executor = connection, lock = false) {
   const [rows] = await executor.query(
     `SELECT
       mt.*, reporter.public_id AS reporter_public_id,
@@ -79,7 +79,7 @@ export async function findMaintenanceTicket(publicId, executor = pool, lock = fa
 export async function listCustomerTickets(
   userId,
   { fetchLimit, offset, status },
-  executor = pool,
+  executor = connection,
 ) {
   const where = ["mt.reporter_user_id = ?"];
   const params = [userId];
@@ -96,7 +96,7 @@ export async function listCustomerTickets(
      FROM maintenance_tickets mt
      JOIN buildings b ON b.id = mt.building_id
      WHERE ${where.join(" AND ")}
-     ORDER BY mt.created_at DESC
+     ORDER BY mt.created_at DESC, mt.id DESC
      LIMIT ? OFFSET ?`,
     params,
   );
@@ -105,7 +105,7 @@ export async function listCustomerTickets(
 
 export async function listAdminTickets(
   { fetchLimit, offset, status, priority, category },
-  executor = pool,
+  executor = connection,
 ) {
   const where = [];
   const params = [];
@@ -134,14 +134,15 @@ export async function listAdminTickets(
      ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
      ORDER BY
        FIELD(mt.priority, 'urgent', 'normal', 'low'),
-       mt.created_at
+       mt.created_at,
+       mt.id
      LIMIT ? OFFSET ?`,
     params,
   );
   return rows;
 }
 
-export async function listMaintenanceAttachments(ticketId, executor = pool) {
+export async function listMaintenanceAttachments(ticketId, executor = connection) {
   const [rows] = await executor.query(
     `SELECT public_id, original_name, mime_type, size_bytes, created_at
      FROM maintenance_attachments
@@ -152,7 +153,7 @@ export async function listMaintenanceAttachments(ticketId, executor = pool) {
   return rows;
 }
 
-export async function findMaintenanceAttachment(publicId, executor = pool) {
+export async function findMaintenanceAttachment(publicId, executor = connection) {
   const [rows] = await executor.query(
     `SELECT
       ma.*, mt.reporter_user_id, mt.public_id AS ticket_public_id
@@ -165,7 +166,7 @@ export async function findMaintenanceAttachment(publicId, executor = pool) {
   return rows[0] ?? null;
 }
 
-export async function listMaintenanceComments(ticketId, includeInternal, executor = pool) {
+export async function listMaintenanceComments(ticketId, includeInternal, executor = connection) {
   const [rows] = await executor.query(
     `SELECT
       mc.public_id, mc.body, mc.is_internal, mc.created_at,
@@ -181,7 +182,7 @@ export async function listMaintenanceComments(ticketId, includeInternal, executo
   return rows;
 }
 
-export async function listMaintenanceHistory(ticketId, executor = pool) {
+export async function listMaintenanceHistory(ticketId, executor = connection) {
   const [rows] = await executor.query(
     `SELECT
       mh.event_type, mh.from_value, mh.to_value, mh.note, mh.created_at,
@@ -195,7 +196,7 @@ export async function listMaintenanceHistory(ticketId, executor = pool) {
   return rows;
 }
 
-export async function insertMaintenanceComment(data, executor = pool) {
+export async function insertMaintenanceComment(data, executor = connection) {
   const [result] = await executor.query(
     `INSERT INTO maintenance_comments (
       public_id, maintenance_ticket_id, author_user_id, body, is_internal
@@ -211,7 +212,7 @@ export async function insertMaintenanceComment(data, executor = pool) {
   return result.insertId;
 }
 
-export async function updateMaintenanceTicket(ticketId, data, executor = pool) {
+export async function updateMaintenanceTicket(ticketId, data, executor = connection) {
   await executor.query(
     `UPDATE maintenance_tickets SET
       status = ?,

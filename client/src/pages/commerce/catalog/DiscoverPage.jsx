@@ -1,9 +1,12 @@
 import { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
 import { Icon } from "../../../components/ui/Icon.jsx";
+import { LoadMoreButton } from "../../../components/ui/LoadMoreButton.jsx";
 import { PageHeader } from "../../../components/ui/PageHeader.jsx";
 import { EmptyState, ErrorState, LoadingState } from "../../../components/ui/PageState.jsx";
 import { useApiResource } from "../../../hooks/useApiResource.js";
+import { useDebouncedValue } from "../../../hooks/useDebouncedValue.js";
+import { useLoadMoreResource } from "../../../hooks/useLoadMoreResource.js";
 import { catalogService } from "../../../services/catalog/catalogService.js";
 
 const typeVisuals = {
@@ -18,25 +21,28 @@ export function DiscoverPage({ group }) {
   const [openOnly, setOpenOnly] = useState(false);
   const [buildingId, setBuildingId] = useState("");
   const [service, setService] = useState("");
+  const debouncedQuery = useDebouncedValue(query);
   const load = useCallback(
-    () => catalogService.vendors({
+    ({ page, limit }) => catalogService.vendors({
       group,
-      query,
+      query: debouncedQuery,
       buildingId,
       pickup: service === "pickup" || undefined,
       delivery: service === "delivery" || undefined,
-      limit: 24,
+      open: openOnly || undefined,
+      page,
+      limit,
     }),
-    [buildingId, group, query, service],
+    [buildingId, debouncedQuery, group, openOnly, service],
   );
   const loadBuildings = useCallback(() => catalogService.buildings({ limit: 50 }), []);
-  const { data, loading, error, reload } = useApiResource(load, [load]);
+  const vendors = useLoadMoreResource(load, { pageSize: 6 });
   const buildings = useApiResource(loadBuildings);
   const title = group === "eat" ? "Food for the next break" : "Campus essentials, close by";
   const description = group === "eat"
     ? "Fresh meals, snacks, and drinks for pickup or campus delivery."
     : "Stationery, technology, study tools, and dorm essentials without leaving campus.";
-  const visible = (data?.data ?? []).filter((vendor) => !openOnly || vendor.is_open);
+  const visible = vendors.items;
 
   return (
     <div className="page-container discover-page">
@@ -76,9 +82,9 @@ export function DiscoverPage({ group }) {
         </label>
       </section>
 
-      {loading && <LoadingState label="Finding campus options..." />}
-      {error && <ErrorState error={error} onRetry={reload} />}
-      {!loading && !error && visible.length === 0 && (
+      {vendors.loading && <LoadingState label="Finding campus options..." />}
+      {vendors.error && visible.length === 0 && <ErrorState error={vendors.error} onRetry={vendors.reload} />}
+      {!vendors.loading && !vendors.error && visible.length === 0 && (
         <EmptyState
           title="No matches yet"
           message="Try a broader search or include vendors that are currently closed."
@@ -109,6 +115,12 @@ export function DiscoverPage({ group }) {
           );
         })}
       </section>
+      <LoadMoreButton
+        hasMore={vendors.meta.hasMore}
+        loading={vendors.loadingMore}
+        error={visible.length ? vendors.error : null}
+        onLoadMore={vendors.loadMore}
+      />
     </div>
   );
 }

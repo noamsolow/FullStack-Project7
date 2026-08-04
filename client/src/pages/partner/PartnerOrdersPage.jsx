@@ -1,8 +1,10 @@
 import { useCallback, useState } from "react";
 import { PageHeader } from "../../components/ui/PageHeader.jsx";
+import { LoadMoreButton } from "../../components/ui/LoadMoreButton.jsx";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/PageState.jsx";
 import { StatusChip } from "../../components/ui/StatusChip.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
+import { useLoadMoreResource } from "../../hooks/useLoadMoreResource.js";
 import { partnerService } from "../../services/portals/partnerService.js";
 import { formatDate, formatMoney, orderStatusLabel, titleCase } from "../../utils/format.js";
 
@@ -24,15 +26,18 @@ function nextStatuses(order) {
 
 export function PartnerOrdersPage() {
   const [selected, setSelected] = useState(null);
-  const load = useCallback(() => partnerService.orders({ limit: 50 }), []);
-  const { data, loading, error, reload } = useApiResource(load);
-  const orders = data?.data ?? [];
+  const load = useCallback(
+    ({ page, limit }) => partnerService.orders({ page, limit }),
+    [],
+  );
+  const history = useLoadMoreResource(load, { pageSize: 10 });
+  const orders = history.items;
   return (
     <div className="portal-page">
       <PageHeader eyebrow="Operations" title="Orders" description="Move orders into progress, then mark them ready for pickup or on the way." />
-      {loading && <LoadingState />}
-      {error && <ErrorState error={error} onRetry={reload} />}
-      {!loading && !error && !orders.length && <EmptyState icon="orders" title="No orders yet" message="Paid customer orders will appear here." />}
+      {history.loading && <LoadingState />}
+      {history.error && !orders.length && <ErrorState error={history.error} onRetry={history.reload} />}
+      {!history.loading && !history.error && !orders.length && <EmptyState icon="orders" title="No orders yet" message="Paid customer orders will appear here." />}
       <div className="data-table-wrap">
         <table className="data-table">
           <thead><tr><th>Order</th><th>Customer</th><th>Fulfillment</th><th>Total</th><th>Status</th><th></th></tr></thead>
@@ -48,7 +53,8 @@ export function PartnerOrdersPage() {
           ))}</tbody>
         </table>
       </div>
-      {selected && <OrderManager publicId={selected.public_id} onClose={() => setSelected(null)} onSaved={() => { setSelected(null); reload(); }} />}
+      <LoadMoreButton hasMore={history.meta.hasMore} loading={history.loadingMore} error={orders.length ? history.error : null} onLoadMore={history.loadMore} />
+      {selected && <OrderManager publicId={selected.public_id} onClose={() => setSelected(null)} onSaved={() => { setSelected(null); history.reload(); }} />}
     </div>
   );
 }

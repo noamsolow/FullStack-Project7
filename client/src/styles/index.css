@@ -1332,6 +1332,8 @@ textarea {
 .catalog-sidebar button { width: 100%; border: 0; border-radius: 10px; padding: .7rem; text-align: left; background: transparent; cursor: pointer; }
 .catalog-sidebar button.active { color: var(--navy-900); background: var(--violet-100); font-weight: 800; }
 .product-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+.load-more { display: grid; justify-items: center; gap: .55rem; padding: 1.25rem 0 .25rem; }
+.load-more p { margin: 0; color: var(--danger); font-size: .8rem; }
 .product-card { display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--line); border-radius: 20px; background: white; }
 .product-card:hover { box-shadow: var(--shadow-small); transform: translateY(-3px); }
 .product-card__body { display: flex; flex: 1; flex-direction: column; padding: 1rem; }
@@ -1341,13 +1343,9 @@ textarea {
 .product-card p { color: var(--muted); font-size: .8rem; line-height: 1.5; }
 .product-card__footer { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-top: auto; }
 .product-card__footer button { width: 38px; height: 38px; }
-.category-pills { display: flex; gap: .5rem; margin-bottom: 1.2rem; overflow-x: auto; padding-bottom: .35rem; }
 .product-filter-bar { display: grid; grid-template-columns: minmax(220px, 1fr) auto auto; gap: .7rem; margin-bottom: 1rem; border: 1px solid var(--line); border-radius: 16px; padding: .65rem; background: white; }
 .product-filter-bar .search-field { padding-left: .5rem; }
 .product-filter-bar .search-field input { border: 0; }
-.category-pills button { border: 1px solid var(--line); border-radius: 999px; padding: .6rem .9rem; background: white; cursor: pointer; font-size: .78rem; font-weight: 700; white-space: nowrap; }
-.category-pills button:hover,
-.category-pills button.active { border-color: var(--violet-500); color: var(--violet-700); background: var(--violet-100); }
 .product-card__category { color: var(--cyan-600); font-size: .68rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
 .allergen { display: block; margin-bottom: 1rem; color: var(--danger); font-size: .68rem; line-height: 1.4; }
 .add-button { display: grid; place-items: center; border: 0; border-radius: 50%; color: white; background: var(--navy-800); cursor: pointer; }
@@ -1356,6 +1354,43 @@ textarea {
 .product-visual { display: grid; min-height: 145px; place-items: center; overflow: hidden; background: #edf0f7; font-size: 3.5rem; }
 .product-visual img { width: 100%; height: 100%; object-fit: cover; }
 .product-visual--large { min-height: 190px; }
+.product-visual--illustrated { background: linear-gradient(145deg, #fafcfd, #edf2f7); }
+.product-illustration { display: block; width: min(92%, 240px); height: auto; overflow: visible; }
+.product-illustration * { vector-effect: non-scaling-stroke; }
+.svg-backdrop { fill: #fff; opacity: .75; }
+.svg-plate,
+.svg-bowl-rim { fill: #fff; stroke: #c7d2dc; stroke-width: 4; }
+.svg-bowl { fill: #f8fafc; stroke: #aab9c6; stroke-width: 4; }
+.svg-primary,
+.svg-secondary { fill: currentColor; stroke: color-mix(in srgb, currentColor 70%, #263645); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.svg-dark { fill: #50332b; stroke: #34231f; stroke-width: 3; stroke-linejoin: round; }
+.svg-bread { fill: #e7b761; stroke: #9e692f; stroke-width: 4; stroke-linejoin: round; }
+.svg-crust { fill: #d89947; stroke: #965f2e; stroke-width: 4; }
+.svg-cutout { fill: #f8fafc; stroke: #99703b; stroke-width: 3; }
+.svg-pan { fill: #495764; stroke: #2c3740; stroke-width: 4; stroke-linejoin: round; }
+.svg-glass { fill: #e8f5f8; stroke: #7193a1; stroke-width: 4; stroke-linejoin: round; }
+.svg-cap { fill: #607486; }
+.svg-can-top { fill: #dce3e8; stroke: #75848f; stroke-width: 3; }
+.svg-mug { fill: #f8f1e8; stroke: #987966; stroke-width: 4; }
+.svg-handle { fill: none; stroke: #987966; stroke-width: 9; stroke-linecap: round; }
+.svg-paper { fill: #fff; stroke: #8496a5; stroke-width: 4; stroke-linejoin: round; }
+.svg-fold { fill: #dce6ed; stroke: #8496a5; stroke-width: 3; stroke-linejoin: round; }
+.svg-lines,
+.svg-wave,
+.svg-binding { fill: none; stroke: #506274; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.svg-steam { fill: none; stroke: #91a2aa; stroke-width: 3; stroke-linecap: round; }
+.svg-straw { fill: none; stroke: #d75b67; stroke-width: 4; stroke-linecap: round; }
+.svg-tea-string { fill: none; stroke: #61745d; stroke-width: 2; }
+.svg-ice rect { fill: #dff5fb; stroke: #91c9d8; stroke-width: 2; }
+.svg-egg circle:nth-child(-n+2) { fill: #fff9df; stroke: #e7d7aa; stroke-width: 2; }
+.svg-egg circle:nth-last-child(-n+2) { fill: #f1bd34; stroke: #cf911d; stroke-width: 2; }
+.svg-label,
+.svg-caption { fill: #31475a; font-family: inherit; font-size: 9px; font-weight: 900; letter-spacing: .06em; text-anchor: middle; }
+.svg-label--light { fill: #fff; }
+.svg-caption { font-size: 8px; }
+.cart-item .product-illustration,
+.recommend-list .product-illustration,
+.shopping-product .product-illustration { width: min(96%, 150px); }
 .visual--coral { background: var(--coral-100); }
 .visual--violet { background: var(--violet-100); }
 .visual--cyan { background: var(--cyan-100); }

@@ -6,26 +6,31 @@ export function useApiResource(loader) {
     loading: true,
     error: null,
   });
-  const loaderRef = useRef(loader);
-
-  useEffect(() => {
-    loaderRef.current = loader;
-  }, [loader]);
+  const latestRequest = useRef(0);
 
   const load = useCallback(async () => {
+    const requestNumber = latestRequest.current + 1;
+    latestRequest.current = requestNumber;
     setState((current) => ({ ...current, loading: true, error: null }));
     try {
-      const result = await loaderRef.current();
-      setState({ data: result, loading: false, error: null });
+      const result = await loader();
+      if (latestRequest.current === requestNumber) {
+        setState({ data: result, loading: false, error: null });
+      }
       return result;
     } catch (error) {
-      setState({ data: null, loading: false, error });
+      if (latestRequest.current === requestNumber) {
+        setState({ data: null, loading: false, error });
+      }
       return null;
     }
-  }, []);
+  }, [loader]);
 
   useEffect(() => {
     load();
+    return () => {
+      latestRequest.current += 1;
+    };
   }, [load]);
 
   return { ...state, reload: load };

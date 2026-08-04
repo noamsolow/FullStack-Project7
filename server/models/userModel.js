@@ -1,4 +1,4 @@
-import { pool } from "../db/pool.js";
+import { connection } from "../db/connection.js";
 
 const safeUserColumns = `
   id,
@@ -8,13 +8,14 @@ const safeUserColumns = `
   phone,
   customer_type,
   role,
+  vendor_id,
   blocked_at,
   deleted_at,
   created_at,
   updated_at
 `;
 
-export async function findUserByEmail(email, executor = pool) {
+export async function findUserByEmail(email, executor = connection) {
   const [rows] = await executor.query(
     `SELECT ${safeUserColumns}, password_hash
      FROM users
@@ -25,7 +26,7 @@ export async function findUserByEmail(email, executor = pool) {
   return rows[0] ?? null;
 }
 
-export async function findActiveUserById(id, executor = pool) {
+export async function findActiveUserById(id, executor = connection) {
   const [rows] = await executor.query(
     `SELECT ${safeUserColumns}
      FROM users
@@ -36,7 +37,7 @@ export async function findActiveUserById(id, executor = pool) {
   return rows[0] ?? null;
 }
 
-export async function findSafeUserByPublicId(publicId, executor = pool) {
+export async function findSafeUserByPublicId(publicId, executor = connection) {
   const [rows] = await executor.query(
     `SELECT ${safeUserColumns}
      FROM users
@@ -47,11 +48,23 @@ export async function findSafeUserByPublicId(publicId, executor = pool) {
   return rows[0] ?? null;
 }
 
-export async function createUser(data, executor = pool) {
+export async function findActiveAdminByPublicId(publicId, executor = connection) {
+  const [rows] = await executor.query(
+    `SELECT ${safeUserColumns}
+     FROM users
+     WHERE public_id = ? AND role = 'admin'
+       AND blocked_at IS NULL AND deleted_at IS NULL
+     LIMIT 1`,
+    [publicId],
+  );
+  return rows[0] ?? null;
+}
+
+export async function createUser(data, executor = connection) {
   const [result] = await executor.query(
     `INSERT INTO users (
-      public_id, email, display_name, phone, customer_type, role, password_hash
-    ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      public_id, email, display_name, phone, customer_type, role, vendor_id, password_hash
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.publicId,
       data.email,
@@ -59,13 +72,14 @@ export async function createUser(data, executor = pool) {
       data.phone ?? null,
       data.customerType ?? null,
       data.role,
+      data.vendorId ?? null,
       data.passwordHash,
     ],
   );
   return findActiveUserById(result.insertId, executor);
 }
 
-export async function updateOwnProfile(userId, data, executor = pool) {
+export async function updateOwnProfile(userId, data, executor = connection) {
   await executor.query(
     `UPDATE users
      SET display_name = ?, phone = ?
@@ -75,7 +89,7 @@ export async function updateOwnProfile(userId, data, executor = pool) {
   return findActiveUserById(userId, executor);
 }
 
-export async function findUserCompletedSpending(userId, executor = pool) {
+export async function findUserCompletedSpending(userId, executor = connection) {
   const [rows] = await executor.query(
     `SELECT
        COALESCE((
@@ -94,7 +108,7 @@ export async function findUserCompletedSpending(userId, executor = pool) {
   return Number(rows[0]?.total_spent_agorot ?? 0);
 }
 
-export async function softDeleteOwnAccount(userId, executor = pool) {
+export async function softDeleteOwnAccount(userId, executor = connection) {
   const [result] = await executor.query(
     `UPDATE users
      SET deleted_at = CURRENT_TIMESTAMP
@@ -104,7 +118,7 @@ export async function softDeleteOwnAccount(userId, executor = pool) {
   return result.affectedRows > 0;
 }
 
-export async function createVendor(data, executor = pool) {
+export async function createVendor(data, executor = connection) {
   const [result] = await executor.query(
     `INSERT INTO vendors (
       public_id, building_id, name, slug, vendor_type, description,
@@ -125,35 +139,26 @@ export async function createVendor(data, executor = pool) {
   return result.insertId;
 }
 
-export async function addVendorMembership(userId, vendorId, membershipRole, executor = pool) {
-  await executor.query(
-    `INSERT INTO vendor_memberships (user_id, vendor_id, membership_role)
-     VALUES (?, ?, ?)`,
-    [userId, vendorId, membershipRole],
-  );
-}
-
-export async function findVendorMembership(userId, executor = pool) {
+export async function findUserVendor(userId, executor = connection) {
   const [rows] = await executor.query(
     `SELECT
-      vm.membership_role,
       v.id AS vendor_id,
       v.public_id AS vendor_public_id,
       v.name AS vendor_name,
       v.slug AS vendor_slug,
       v.vendor_type,
       v.status AS vendor_status
-     FROM vendor_memberships vm
-     JOIN vendors v ON v.id = vm.vendor_id
-     WHERE vm.user_id = ? AND v.deleted_at IS NULL
-     ORDER BY vm.created_at
+     FROM users u
+     JOIN vendors v ON v.id = u.vendor_id
+     WHERE u.id = ? AND u.role = 'vendor_manager'
+       AND u.deleted_at IS NULL AND v.deleted_at IS NULL
      LIMIT 1`,
     [userId],
   );
   return rows[0] ?? null;
 }
 
-export async function listUsers({ fetchLimit, offset, role, status }, executor = pool) {
+export async function listUsers({ fetchLimit, offset, role, status }, executor = connection) {
   const filters = ["deleted_at IS NULL"];
   const params = [];
   if (role) {
@@ -168,14 +173,14 @@ export async function listUsers({ fetchLimit, offset, role, status }, executor =
     `SELECT ${safeUserColumns}
      FROM users
      WHERE ${filters.join(" AND ")}
-     ORDER BY created_at DESC
+     ORDER BY created_at DESC, id DESC
      LIMIT ? OFFSET ?`,
     params,
   );
   return rows;
 }
 
-export async function setUserBlocked(publicId, blocked, executor = pool) {
+export async function setUserBlocked(publicId, blocked, executor = connection) {
   const [result] = await executor.query(
     `UPDATE users
      SET blocked_at = ${blocked ? "CURRENT_TIMESTAMP" : "NULL"}

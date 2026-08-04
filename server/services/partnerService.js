@@ -1,5 +1,7 @@
-import { pool } from "../db/pool.js";
-import { findActiveUserById, findVendorMembership } from "../models/userModel.js";
+import {
+  findActiveAdminByPublicId,
+  findUserVendor,
+} from "../models/userModel.js";
 import {
   createProduct,
   findCategoryBySlug,
@@ -28,7 +30,7 @@ import {
 } from "../utils/files.js";
 
 export async function requireMembership(userId) {
-  const membership = await findVendorMembership(userId);
+  const membership = await findUserVendor(userId);
   if (!membership || membership.vendor_status !== "active") {
     throw new AppError(403, "VENDOR_ACCESS_REQUIRED", "An active vendor account is required");
   }
@@ -177,13 +179,7 @@ export async function saveDeliveryZone(user, input, context) {
 }
 
 export async function ensureAdminUser(publicIdValue) {
-  const [rows] = await pool.query(
-    `SELECT id FROM users
-     WHERE public_id = ? AND role = 'admin'
-       AND blocked_at IS NULL AND deleted_at IS NULL
-     LIMIT 1`,
-    [publicIdValue],
-  );
-  if (!rows[0]) throw new AppError(400, "INVALID_ADMIN", "Select an active administrator");
-  return findActiveUserById(rows[0].id);
+  const admin = await findActiveAdminByPublicId(publicIdValue);
+  if (!admin) throw new AppError(400, "INVALID_ADMIN", "Select an active administrator");
+  return admin;
 }

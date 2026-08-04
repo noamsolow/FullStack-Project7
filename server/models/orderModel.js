@@ -1,4 +1,4 @@
-import { pool } from "../db/pool.js";
+import { connection } from "../db/connection.js";
 
 export async function lockProductsByPublicIds(publicIds, executor) {
   const placeholders = publicIds.map(() => "?").join(", ");
@@ -87,7 +87,7 @@ export async function insertOrderItems(orderId, items, executor) {
 
 export async function addOrderHistory(
   { orderId, actorUserId = null, fromStatus = null, toStatus, note = null },
-  executor = pool,
+  executor = connection,
 ) {
   await executor.query(
     `INSERT INTO order_status_history (
@@ -107,14 +107,14 @@ export async function createOrderPayment(data, executor) {
   return result.insertId;
 }
 
-export async function attachProviderOrder(paymentId, providerOrderId, executor = pool) {
+export async function attachProviderOrder(paymentId, providerOrderId, executor = connection) {
   await executor.query(
     `UPDATE payments SET provider_order_id = ? WHERE id = ?`,
     [providerOrderId, paymentId],
   );
 }
 
-export async function findOrderByPublicId(publicId, executor = pool, lock = false) {
+export async function findOrderByPublicId(publicId, executor = connection, lock = false) {
   const [rows] = await executor.query(
     `SELECT
       o.*, u.public_id AS user_public_id, u.display_name AS customer_name,
@@ -132,7 +132,7 @@ export async function findOrderByPublicId(publicId, executor = pool, lock = fals
   return rows[0] ?? null;
 }
 
-export async function findOrderNotificationByPublicId(publicId, executor = pool) {
+export async function findOrderNotificationByPublicId(publicId, executor = connection) {
   const [rows] = await executor.query(
     `SELECT
       o.public_id, o.order_number, o.fulfillment_type, o.total_agorot,
@@ -149,7 +149,7 @@ export async function findOrderNotificationByPublicId(publicId, executor = pool)
   return rows[0] ?? null;
 }
 
-export async function findPaymentForOrder(orderId, executor = pool, lock = false) {
+export async function findPaymentForOrder(orderId, executor = connection, lock = false) {
   const [rows] = await executor.query(
     `SELECT
        id, public_id, order_id, provider, provider_order_id,
@@ -165,7 +165,7 @@ export async function findPaymentForOrder(orderId, executor = pool, lock = false
   return rows[0] ?? null;
 }
 
-export async function listOrderItems(orderId, executor = pool) {
+export async function listOrderItems(orderId, executor = connection) {
   const [rows] = await executor.query(
     `SELECT
       p.public_id AS product_public_id, oi.product_name, oi.sku,
@@ -179,7 +179,7 @@ export async function listOrderItems(orderId, executor = pool) {
   return rows;
 }
 
-export async function listOrderHistory(orderId, executor = pool) {
+export async function listOrderHistory(orderId, executor = connection) {
   const [rows] = await executor.query(
     `SELECT
       h.from_status, h.to_status, h.note, h.created_at,
@@ -193,7 +193,7 @@ export async function listOrderHistory(orderId, executor = pool) {
   return rows;
 }
 
-export async function listCustomerOrders(userId, { fetchLimit, offset, status }, executor = pool) {
+export async function listCustomerOrders(userId, { fetchLimit, offset, status }, executor = connection) {
   const where = ["o.user_id = ?"];
   const params = [userId];
   if (status) {
@@ -209,14 +209,14 @@ export async function listCustomerOrders(userId, { fetchLimit, offset, status },
      FROM orders o
      JOIN vendors v ON v.id = o.vendor_id
      WHERE ${where.join(" AND ")}
-     ORDER BY o.created_at DESC
+     ORDER BY o.created_at DESC, o.id DESC
      LIMIT ? OFFSET ?`,
     params,
   );
   return rows;
 }
 
-export async function listVendorOrders(vendorId, { fetchLimit, offset, status }, executor = pool) {
+export async function listVendorOrders(vendorId, { fetchLimit, offset, status }, executor = connection) {
   const where = ["o.vendor_id = ?"];
   const params = [vendorId];
   if (status) {
@@ -236,7 +236,7 @@ export async function listVendorOrders(vendorId, { fetchLimit, offset, status },
      JOIN users u ON u.id = o.user_id
      LEFT JOIN buildings b ON b.id = o.delivery_building_id
      WHERE ${where.join(" AND ")}
-     ORDER BY o.created_at DESC
+     ORDER BY o.created_at DESC, o.id DESC
      LIMIT ? OFFSET ?`,
     params,
   );
@@ -245,7 +245,7 @@ export async function listVendorOrders(vendorId, { fetchLimit, offset, status },
 
 export async function listAdminOrders(
   { fetchLimit, offset, status, search },
-  executor = pool,
+  executor = connection,
 ) {
   const where = [];
   const params = [];
@@ -279,14 +279,14 @@ export async function listAdminOrders(
      JOIN vendors v ON v.id = o.vendor_id
      LEFT JOIN buildings b ON b.id = o.delivery_building_id
      ${where.length ? `WHERE ${where.join(" AND ")}` : ""}
-     ORDER BY o.created_at DESC
+     ORDER BY o.created_at DESC, o.id DESC
      LIMIT ? OFFSET ?`,
     params,
   );
   return rows;
 }
 
-export async function listOrderHistoriesByOrderIds(orderIds, executor = pool) {
+export async function listOrderHistoriesByOrderIds(orderIds, executor = connection) {
   if (!orderIds.length) return [];
   const placeholders = orderIds.map(() => "?").join(", ");
   const [rows] = await executor.query(
@@ -302,7 +302,7 @@ export async function listOrderHistoriesByOrderIds(orderIds, executor = pool) {
   return rows;
 }
 
-export async function setOrderStatus(orderId, status, executor = pool) {
+export async function setOrderStatus(orderId, status, executor = connection) {
   await executor.query(
     `UPDATE orders
      SET status = ?,
@@ -338,14 +338,14 @@ export async function completeOrderPayment(
   );
 }
 
-export async function markPaymentFailed(paymentId, failureCode, executor = pool) {
+export async function markPaymentFailed(paymentId, failureCode, executor = connection) {
   await executor.query(
     `UPDATE payments SET status = 'failed', failure_code = ? WHERE id = ?`,
     [failureCode, paymentId],
   );
 }
 
-export async function createOrderCancellationRequest(data, executor = pool) {
+export async function createOrderCancellationRequest(data, executor = connection) {
   const [result] = await executor.query(
     `INSERT INTO cancellation_requests (
       public_id, requester_user_id, order_id, reason
@@ -355,7 +355,7 @@ export async function createOrderCancellationRequest(data, executor = pool) {
   return result.insertId;
 }
 
-export async function findOpenOrderCancellation(orderId, executor = pool) {
+export async function findOpenOrderCancellation(orderId, executor = connection) {
   const [rows] = await executor.query(
     `SELECT public_id, status, reason, created_at
      FROM cancellation_requests
@@ -366,7 +366,7 @@ export async function findOpenOrderCancellation(orderId, executor = pool) {
   return rows[0] ?? null;
 }
 
-export async function findExpiredReservations(limit = 50, executor = pool) {
+export async function findExpiredReservations(limit = 50, executor = connection) {
   const [rows] = await executor.query(
     `SELECT id, public_id
      FROM orders

@@ -1,4 +1,4 @@
-import { pool } from "../db/pool.js";
+import { connection } from "../db/connection.js";
 
 export async function createPrintJob(data, executor) {
   const [result] = await executor.query(
@@ -28,7 +28,7 @@ export async function createPrintJob(data, executor) {
   return result.insertId;
 }
 
-export async function findPrintFileBufferByJobId(printJobId, executor = pool) {
+export async function findPrintFileBufferByJobId(printJobId, executor = connection) {
   const [rows] = await executor.query(
     `SELECT file_data
      FROM print_files
@@ -59,7 +59,7 @@ export async function insertPrintFile(data, executor) {
 
 export async function addPrintHistory(
   { printJobId, actorUserId = null, fromStatus = null, toStatus, note = null },
-  executor = pool,
+  executor = connection,
 ) {
   await executor.query(
     `INSERT INTO print_job_history (
@@ -69,7 +69,7 @@ export async function addPrintHistory(
   );
 }
 
-export async function findPrintJobByPublicId(publicId, executor = pool, lock = false) {
+export async function findPrintJobByPublicId(publicId, executor = connection, lock = false) {
   const [rows] = await executor.query(
     `SELECT
       pj.*, u.public_id AS user_public_id, u.display_name AS customer_name,
@@ -92,7 +92,7 @@ export async function findPrintJobByPublicId(publicId, executor = pool, lock = f
 export async function listCustomerPrintJobs(
   userId,
   { fetchLimit, offset, status },
-  executor = pool,
+  executor = connection,
 ) {
   const where = ["pj.user_id = ?"];
   const params = [userId];
@@ -111,7 +111,7 @@ export async function listCustomerPrintJobs(
      FROM print_jobs pj
      JOIN vendors v ON v.id = pj.vendor_id
      WHERE ${where.join(" AND ")}
-     ORDER BY pj.created_at DESC
+     ORDER BY pj.created_at DESC, pj.id DESC
      LIMIT ? OFFSET ?`,
     params,
   );
@@ -121,7 +121,7 @@ export async function listCustomerPrintJobs(
 export async function listVendorPrintJobs(
   vendorId,
   { fetchLimit, offset, status },
-  executor = pool,
+  executor = connection,
 ) {
   const where = ["pj.vendor_id = ?"];
   const params = [vendorId];
@@ -143,14 +143,14 @@ export async function listVendorPrintJobs(
      JOIN users u ON u.id = pj.user_id
      JOIN print_files pf ON pf.print_job_id = pj.id AND pf.deleted_at IS NULL
      WHERE ${where.join(" AND ")}
-     ORDER BY pj.created_at DESC
+     ORDER BY pj.created_at DESC, pj.id DESC
      LIMIT ? OFFSET ?`,
     params,
   );
   return rows;
 }
 
-export async function listPrintHistory(printJobId, executor = pool) {
+export async function listPrintHistory(printJobId, executor = connection) {
   const [rows] = await executor.query(
     `SELECT
       h.from_status, h.to_status, h.note, h.created_at,
@@ -168,7 +168,7 @@ export async function quotePrintJob(
   printJobId,
   quoteAgorot,
   status = "quoted",
-  executor = pool,
+  executor = connection,
 ) {
   await executor.query(
     `UPDATE print_jobs
@@ -179,7 +179,7 @@ export async function quotePrintJob(
   );
 }
 
-export async function setPrintStatus(printJobId, status, executor = pool) {
+export async function setPrintStatus(printJobId, status, executor = connection) {
   await executor.query(
     `UPDATE print_jobs SET
       status = ?,
@@ -212,7 +212,7 @@ export async function beginPrintCheckout(printJobId, executor) {
   );
 }
 
-export async function failPrintCheckout(paymentId, printJobId, executor = pool) {
+export async function failPrintCheckout(paymentId, printJobId, executor = connection) {
   await executor.query(
     "UPDATE payments SET status = 'failed', failure_code = 'PAYMENT_CREATE_FAILED' WHERE id = ? AND status = 'created'",
     [paymentId],
@@ -223,7 +223,7 @@ export async function failPrintCheckout(paymentId, printJobId, executor = pool) 
   );
 }
 
-export async function findPaymentForPrintJob(printJobId, executor = pool, lock = false) {
+export async function findPaymentForPrintJob(printJobId, executor = connection, lock = false) {
   const [rows] = await executor.query(
     `SELECT
        id, public_id, print_job_id, provider, provider_order_id,
@@ -242,7 +242,7 @@ export async function findPaymentForPrintJob(printJobId, executor = pool, lock =
 export async function attachPrintProviderOrder(
   paymentId,
   providerOrderId,
-  executor = pool,
+  executor = connection,
 ) {
   await executor.query(
     "UPDATE payments SET provider_order_id = ? WHERE id = ?",
@@ -281,7 +281,7 @@ export async function completePrintPayment(data, executor) {
   );
 }
 
-export async function createPrintCancellationRequest(data, executor = pool) {
+export async function createPrintCancellationRequest(data, executor = connection) {
   await executor.query(
     `INSERT INTO cancellation_requests (
       public_id, requester_user_id, print_job_id, reason
@@ -290,7 +290,7 @@ export async function createPrintCancellationRequest(data, executor = pool) {
   );
 }
 
-export async function findPrintFile(publicId, executor = pool) {
+export async function findPrintFile(publicId, executor = connection) {
   const [rows] = await executor.query(
     `SELECT
       pf.*, pj.user_id, pj.vendor_id, pj.public_id AS print_job_public_id
@@ -303,7 +303,7 @@ export async function findPrintFile(publicId, executor = pool) {
   return rows[0] ?? null;
 }
 
-export async function listExpiredPrintFiles(limit = 50, executor = pool) {
+export async function listExpiredPrintFiles(limit = 50, executor = connection) {
   const [rows] = await executor.query(
     `SELECT pf.id
      FROM print_files pf
@@ -317,7 +317,7 @@ export async function listExpiredPrintFiles(limit = 50, executor = pool) {
   return rows;
 }
 
-export async function markPrintFileDeleted(id, executor = pool) {
+export async function markPrintFileDeleted(id, executor = connection) {
   await executor.query(
     `UPDATE print_files
      SET file_data = X'', deleted_at = CURRENT_TIMESTAMP

@@ -1,9 +1,12 @@
 import { useCallback, useState } from "react";
 import { Icon } from "../../components/ui/Icon.jsx";
 import { EmptyState, ErrorState, LoadingState } from "../../components/ui/PageState.jsx";
+import { LoadMoreButton } from "../../components/ui/LoadMoreButton.jsx";
 import { PageHeader } from "../../components/ui/PageHeader.jsx";
 import { StatusChip } from "../../components/ui/StatusChip.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
+import { useDebouncedValue } from "../../hooks/useDebouncedValue.js";
+import { useLoadMoreResource } from "../../hooks/useLoadMoreResource.js";
 import { adminService } from "../../services/portals/adminService.js";
 import {
   formatDate,
@@ -67,12 +70,13 @@ export function AdminOrdersPage() {
   const [status, setStatus] = useState("");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null);
+  const debouncedSearch = useDebouncedValue(search);
   const load = useCallback(
-    () => adminService.orders({ limit: 30, status, search }),
-    [search, status],
+    ({ page, limit }) => adminService.orders({ page, limit, status, search: debouncedSearch }),
+    [debouncedSearch, status],
   );
-  const { data, loading, error, reload } = useApiResource(load);
-  const orders = data?.data ?? [];
+  const history = useLoadMoreResource(load, { pageSize: 6 });
+  const orders = history.items;
 
   return (
     <div className="portal-page admin-orders-page">
@@ -101,9 +105,9 @@ export function AdminOrdersPage() {
         </label>
       </section>
 
-      {loading && <LoadingState label="Loading order history..." />}
-      {error && <ErrorState error={error} onRetry={reload} />}
-      {!loading && !error && !orders.length && (
+      {history.loading && <LoadingState label="Loading order history..." />}
+      {history.error && !orders.length && <ErrorState error={history.error} onRetry={history.reload} />}
+      {!history.loading && !history.error && !orders.length && (
         <EmptyState
           icon="orders"
           title="No matching orders"
@@ -140,6 +144,7 @@ export function AdminOrdersPage() {
           </article>
         ))}
       </div>
+      <LoadMoreButton hasMore={history.meta.hasMore} loading={history.loadingMore} error={orders.length ? history.error : null} onLoadMore={history.loadMore} />
 
       {selected && (
         <OrderDetails

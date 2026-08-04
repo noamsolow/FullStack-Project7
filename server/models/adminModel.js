@@ -1,8 +1,8 @@
-import { pool } from "../db/pool.js";
+import { connection } from "../db/connection.js";
 
 export async function listAdminVendors(
   { fetchLimit, offset, status, type },
-  executor = pool,
+  executor = connection,
 ) {
   const where = ["v.deleted_at IS NULL"];
   const params = [];
@@ -23,14 +23,14 @@ export async function listAdminVendors(
      FROM vendors v
      JOIN buildings b ON b.id = v.building_id
      WHERE ${where.join(" AND ")}
-     ORDER BY v.created_at DESC
+     ORDER BY v.created_at DESC, v.id DESC
      LIMIT ? OFFSET ?`,
     params,
   );
   return rows;
 }
 
-export async function setVendorStatus(publicId, status, executor = pool) {
+export async function setVendorStatus(publicId, status, executor = connection) {
   const [result] = await executor.query(
     `UPDATE vendors SET status = ?
      WHERE public_id = ? AND deleted_at IS NULL`,
@@ -39,7 +39,7 @@ export async function setVendorStatus(publicId, status, executor = pool) {
   return result.affectedRows > 0;
 }
 
-export async function createBuilding(data, executor = pool) {
+export async function createBuilding(data, executor = connection) {
   const [result] = await executor.query(
     `INSERT INTO buildings (
       campus_code, name, short_name, description, delivery_hint, is_active
@@ -56,7 +56,7 @@ export async function createBuilding(data, executor = pool) {
   return result.insertId;
 }
 
-export async function updateBuilding(id, data, executor = pool) {
+export async function updateBuilding(id, data, executor = connection) {
   const [result] = await executor.query(
     `UPDATE buildings SET
       campus_code = ?, name = ?, short_name = ?, description = ?,

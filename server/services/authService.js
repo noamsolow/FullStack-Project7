@@ -1,15 +1,14 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { config } from "../config/index.js";
-import { withTransaction } from "../db/pool.js";
+import { withTransaction } from "../db/connection.js";
 import { buildingExists } from "../models/catalogModel.js";
 import {
-  addVendorMembership,
   createUser,
   createVendor,
   findUserByEmail,
   findUserCompletedSpending,
-  findVendorMembership,
+  findUserVendor,
   softDeleteOwnAccount,
   updateOwnProfile,
 } from "../models/userModel.js";
@@ -44,6 +43,7 @@ function signToken(user) {
     { role: user.role },
     config.jwt.secret,
     {
+      algorithm: "HS256",
       subject: user.public_id,
       issuer: config.jwt.issuer,
       audience: config.jwt.audience,
@@ -118,20 +118,6 @@ export async function registerPartner(input, context) {
     if (!(await buildingExists(input.buildingId, connection))) {
       throw new AppError(400, "INVALID_BUILDING", "Select an active campus building");
     }
-    const user = await createUser({
-      publicId: publicId(),
-      email,
-      displayName: input.displayName,
-      phone: input.phone,
-      role: "vendor_manager",
-      passwordHash,
-    }, connection).catch((error) => {
-      if (error.code === "ER_DUP_ENTRY") {
-        throw conflict("An account already uses that email", "EMAIL_IN_USE");
-      }
-      throw error;
-    });
-
     const vendorPublicId = publicId();
     const vendorId = await createVendor({
       publicId: vendorPublicId,
@@ -143,7 +129,20 @@ export async function registerPartner(input, context) {
       contactEmail: email,
       contactPhone: input.phone,
     }, connection);
-    await addVendorMembership(user.id, vendorId, "owner", connection);
+    const user = await createUser({
+      publicId: publicId(),
+      email,
+      displayName: input.displayName,
+      phone: input.phone,
+      role: "vendor_manager",
+      vendorId,
+      passwordHash,
+    }, connection).catch((error) => {
+      if (error.code === "ER_DUP_ENTRY") {
+        throw conflict("An account already uses that email", "EMAIL_IN_USE");
+      }
+      throw error;
+    });
 
     await writeAudit({
       actorUserId: user.id,
@@ -155,7 +154,7 @@ export async function registerPartner(input, context) {
       ip: context.ip,
     }, connection);
 
-    const membership = await findVendorMembership(user.id, connection);
+    const membership = await findUserVendor(user.id, connection);
     return { user: safeUser(user, membership), token: signToken(user) };
   });
 }
@@ -186,7 +185,7 @@ export async function login(input, expectedRole, context) {
   }
 
   const membership = user.role === "vendor_manager"
-    ? await findVendorMembership(user.id)
+    ? await findUserVendor(user.id)
     : null;
   if (user.role === "vendor_manager" && (!membership || membership.vendor_status !== "active")) {
     throw new AppError(403, "VENDOR_UNAVAILABLE", "This vendor account is unavailable");
@@ -206,7 +205,7 @@ export async function login(input, expectedRole, context) {
 
 export async function currentUser(user) {
   const membership = user.role === "vendor_manager"
-    ? await findVendorMembership(user.id)
+    ? await findUserVendor(user.id)
     : null;
   return safeUser(user, membership);
 }
@@ -231,7 +230,7 @@ export async function recordLogout(user, context) {
 export async function updateProfile(user, input) {
   const updated = await updateOwnProfile(user.id, input);
   return safeUser(updated, user.role === "vendor_manager"
-    ? await findVendorMembership(user.id)
+    ? await findUserVendor(user.id)
     : null);
 }
 
