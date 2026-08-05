@@ -22,6 +22,29 @@ CREATE TABLE IF NOT EXISTS buildings (
   INDEX idx_buildings_active_name (is_active, name)
 ) ENGINE=InnoDB;
 
+CREATE TABLE IF NOT EXISTS campus_route_edges (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  from_building_id BIGINT UNSIGNED NOT NULL,
+  to_building_id BIGINT UNSIGNED NOT NULL,
+  distance_meters DECIMAL(7,2) NOT NULL,
+  stairs_distance_meters DECIMAL(7,2) NOT NULL DEFAULT 0,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_route_edges_from_building
+    FOREIGN KEY (from_building_id) REFERENCES buildings(id),
+  CONSTRAINT fk_route_edges_to_building
+    FOREIGN KEY (to_building_id) REFERENCES buildings(id),
+  CONSTRAINT uq_route_edge UNIQUE (from_building_id, to_building_id),
+  CONSTRAINT chk_route_edge_order CHECK (from_building_id < to_building_id),
+  CONSTRAINT chk_route_edge_distance CHECK (distance_meters > 0),
+  CONSTRAINT chk_route_edge_stairs CHECK (
+    stairs_distance_meters >= 0
+    AND stairs_distance_meters <= distance_meters
+  ),
+  INDEX idx_route_edges_to_building (to_building_id, is_active)
+) ENGINE=InnoDB;
+
 CREATE TABLE IF NOT EXISTS vendors (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   public_id CHAR(36) NOT NULL,

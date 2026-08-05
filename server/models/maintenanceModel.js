@@ -142,6 +142,31 @@ export async function listAdminTickets(
   return rows;
 }
 
+export async function listMaintenanceTicketsForRoute(
+  statuses,
+  executor = connection,
+) {
+  if (!Array.isArray(statuses) || statuses.length === 0) return [];
+
+  const placeholders = statuses.map(() => "?").join(", ");
+  const [rows] = await executor.query(
+    `SELECT
+      mt.public_id, mt.ticket_number, mt.title, mt.category,
+      mt.priority, mt.status, mt.location_text, mt.created_at,
+      b.campus_code, b.short_name AS building_name
+     FROM maintenance_tickets mt
+     JOIN buildings b ON b.id = mt.building_id
+     WHERE mt.status IN (${placeholders})
+       AND b.is_active = TRUE
+     ORDER BY
+       FIELD(mt.priority, 'urgent', 'normal', 'low'),
+       mt.created_at,
+       mt.id`,
+    statuses,
+  );
+  return rows;
+}
+
 export async function listMaintenanceAttachments(ticketId, executor = connection) {
   const [rows] = await executor.query(
     `SELECT public_id, original_name, mime_type, size_bytes, created_at

@@ -71,6 +71,12 @@ export async function maintenanceHandler(request, response) {
   response.json(await maintenance.adminMaintenanceTickets(request.query));
 }
 
+export async function maintenanceRouteHandler(_request, response) {
+  response.json({
+    data: await maintenance.maintenanceRoutePlan(),
+  });
+}
+
 export async function maintenanceDetailsHandler(request, response) {
   response.json({
     data: await maintenance.maintenanceDetails(request.user, request.params.publicId),

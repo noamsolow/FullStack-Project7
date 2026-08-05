@@ -12,10 +12,12 @@ import {
   listMaintenanceAttachments,
   listMaintenanceComments,
   listMaintenanceHistory,
+  listMaintenanceTicketsForRoute,
   updateMaintenanceTicket,
 } from "../models/maintenanceModel.js";
 import { findSafeUserByPublicId } from "../models/userModel.js";
 import { writeAudit } from "../models/auditModel.js";
+import { planCampusTour } from "./campusRoutingService.js";
 import { AppError, forbidden, notFound } from "../utils/AppError.js";
 import {
   safeOriginalName,
@@ -24,6 +26,13 @@ import {
 import { publicId, referenceNumber } from "../utils/identifiers.js";
 import { paginated, paginationFrom } from "../utils/pagination.js";
 import { canTransition, maintenanceTransitions } from "../utils/statusRules.js";
+
+const MAINTENANCE_DEPOT_BUILDING = "37";
+const ROUTABLE_MAINTENANCE_STATUSES = [
+  "open",
+  "acknowledged",
+  "in_progress",
+];
 
 export async function submitMaintenanceTicket(user, input, files, context) {
   if (!(await buildingExists(input.buildingId))) {
@@ -115,6 +124,45 @@ export async function adminMaintenanceTickets(query) {
   const paging = paginationFrom(query);
   const rows = await listAdminTickets({ ...paging, ...query });
   return paginated(rows, paging.page, paging.limit);
+}
+
+export async function maintenanceRoutePlan() {
+  const tickets = await listMaintenanceTicketsForRoute(
+    ROUTABLE_MAINTENANCE_STATUSES,
+  );
+  const ticketsByBuilding = new Map();
+
+  tickets.forEach((ticket) => {
+    if (!ticketsByBuilding.has(ticket.campus_code)) {
+      ticketsByBuilding.set(ticket.campus_code, []);
+    }
+    ticketsByBuilding.get(ticket.campus_code).push(ticket);
+  });
+
+  const tour = await planCampusTour(
+    [...ticketsByBuilding.keys()],
+    MAINTENANCE_DEPOT_BUILDING,
+  );
+  const stops = tour.visitOrder
+    .map((campusCode) => ({
+      campusCode,
+      buildingName: ticketsByBuilding.get(campusCode)?.[0]?.building_name ?? null,
+      tickets: ticketsByBuilding.get(campusCode) ?? [],
+    }))
+    .filter((stop) => stop.tickets.length > 0);
+
+  return {
+    depotBuilding: MAINTENANCE_DEPOT_BUILDING,
+    includedStatuses: [...ROUTABLE_MAINTENANCE_STATUSES],
+    ticketCount: tickets.length,
+    stopCount: stops.length,
+    cycle: tour.cycle,
+    legs: tour.legs,
+    totalDistanceMeters: tour.totalDistanceMeters,
+    totalStairsDistanceMeters: tour.totalStairsDistanceMeters,
+    totalWeight: tour.totalWeight,
+    stops,
+  };
 }
 
 export async function addMaintenanceComment(user, publicIdValue, input, context) {

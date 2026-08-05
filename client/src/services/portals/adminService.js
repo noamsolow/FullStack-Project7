@@ -24,6 +24,9 @@ export const adminService = {
     query,
     cache: false,
   }),
+  maintenanceRoute: () => apiRequest("/admin/maintenance-route", {
+    cacheMs: 0,
+  }),
   maintenanceDetails: (publicId) => apiRequest(
     `/admin/maintenance-tickets/${publicId}`,
     { cache: false },

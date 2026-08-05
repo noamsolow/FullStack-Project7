@@ -30,6 +30,55 @@ ON DUPLICATE KEY UPDATE
   map_y = VALUES(map_y),
   is_active = TRUE;
 
+INSERT INTO campus_route_edges (
+  from_building_id, to_building_id, distance_meters,
+  stairs_distance_meters, is_active
+)
+SELECT
+  LEAST(from_building.id, to_building.id),
+  GREATEST(from_building.id, to_building.id),
+  edge.distance_meters,
+  edge.stairs_distance_meters,
+  TRUE
+FROM (
+  SELECT '36' AS from_code, '37' AS to_code, 35.00 AS distance_meters, 0.00 AS stairs_distance_meters
+  UNION ALL SELECT '36', '1', 55.00, 0.00
+  UNION ALL SELECT '37', '27', 35.00, 0.00
+  UNION ALL SELECT '37', '26', 60.00, 0.00
+  UNION ALL SELECT '27', '26', 30.00, 0.00
+  UNION ALL SELECT '26', '24', 40.00, 0.00
+  UNION ALL SELECT '26', '13', 55.00, 55.00
+  UNION ALL SELECT '24', '13', 40.00, 40.00
+  UNION ALL SELECT '13', '12', 40.00, 0.00
+  UNION ALL SELECT '1', '24', 73.00, 0.00
+  UNION ALL SELECT '1', '22', 105.00, 0.00
+  UNION ALL SELECT '1', '12', 105.00, 60.00
+  UNION ALL SELECT '24', '22', 88.00, 0.00
+  UNION ALL SELECT '24', '12', 88.00, 60.00
+  UNION ALL SELECT '22', '12', 120.00, 60.00
+  UNION ALL SELECT '22', '44', 75.00, 0.00
+  UNION ALL SELECT '44', '45', 20.00, 0.00
+  UNION ALL SELECT '44', '41A', 23.00, 0.00
+  UNION ALL SELECT '44', '41B', 30.00, 0.00
+  UNION ALL SELECT '41A', '41B', 15.00, 0.00
+  UNION ALL SELECT '41B', '42', 20.00, 0.00
+  UNION ALL SELECT '41B', '45', 33.00, 0.00
+  UNION ALL SELECT '42', '43', 18.00, 0.00
+  UNION ALL SELECT '42', '45', 38.00, 0.00
+  UNION ALL SELECT '43', '46', 33.00, 0.00
+  UNION ALL SELECT '43', '47', 48.00, 0.00
+  UNION ALL SELECT '45', '46', 33.00, 0.00
+  UNION ALL SELECT '46', '47', 52.00, 0.00
+) edge
+JOIN buildings from_building
+  ON from_building.campus_code COLLATE utf8mb4_general_ci = edge.from_code
+JOIN buildings to_building
+  ON to_building.campus_code COLLATE utf8mb4_general_ci = edge.to_code
+ON DUPLICATE KEY UPDATE
+  distance_meters = VALUES(distance_meters),
+  stairs_distance_meters = VALUES(stairs_distance_meters),
+  is_active = TRUE;
+
 INSERT INTO categories (slug, name, group_name, sort_order)
 VALUES
   ('meals', 'Meals', 'eat', 10),
@@ -702,10 +751,12 @@ ON DUPLICATE KEY UPDATE
   cancelled_at = VALUES(cancelled_at), created_at = VALUES(created_at),
   updated_at = VALUES(updated_at);
 
-DELETE item
-FROM order_items item
-JOIN orders seeded_order ON seeded_order.id = item.order_id
-WHERE seeded_order.public_id LIKE '20000000-0000-4000-8000-%';
+DELETE FROM order_items
+WHERE order_id IN (
+  SELECT id
+  FROM orders
+  WHERE public_id LIKE '20000000-0000-4000-8000-%'
+);
 
 INSERT INTO order_items (
   order_id, product_id, product_name, sku, unit_price_agorot,
@@ -762,10 +813,12 @@ JOIN orders seeded_order
 JOIN products product ON product.sku = spec.sku_2 COLLATE utf8mb4_general_ci
 WHERE spec.sku_2 IS NOT NULL;
 
-DELETE history
-FROM order_status_history history
-JOIN orders seeded_order ON seeded_order.id = history.order_id
-WHERE seeded_order.public_id LIKE '20000000-0000-4000-8000-%';
+DELETE FROM order_status_history
+WHERE order_id IN (
+  SELECT id
+  FROM orders
+  WHERE public_id LIKE '20000000-0000-4000-8000-%'
+);
 
 INSERT INTO order_status_history (
   order_id, actor_user_id, from_status, to_status, note, created_at
@@ -907,10 +960,12 @@ ON DUPLICATE KEY UPDATE
 
 SET @seed_demo_pdf = CONVERT('%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF' USING binary);
 
-DELETE file
-FROM print_files file
-JOIN print_jobs seeded_job ON seeded_job.id = file.print_job_id
-WHERE seeded_job.public_id LIKE '30000000-0000-4000-8000-%';
+DELETE FROM print_files
+WHERE print_job_id IN (
+  SELECT id
+  FROM print_jobs
+  WHERE public_id LIKE '30000000-0000-4000-8000-%'
+);
 
 INSERT INTO print_files (
   public_id, print_job_id, original_name, mime_type, size_bytes,
@@ -943,10 +998,12 @@ FROM JSON_TABLE(@seed_demo_print_jobs, '$[*]' COLUMNS(
 JOIN print_jobs seeded_job
   ON seeded_job.public_id = spec.public_id COLLATE utf8mb4_general_ci;
 
-DELETE history
-FROM print_job_history history
-JOIN print_jobs seeded_job ON seeded_job.id = history.print_job_id
-WHERE seeded_job.public_id LIKE '30000000-0000-4000-8000-%';
+DELETE FROM print_job_history
+WHERE print_job_id IN (
+  SELECT id
+  FROM print_jobs
+  WHERE public_id LIKE '30000000-0000-4000-8000-%'
+);
 
 INSERT INTO print_job_history (
   print_job_id, actor_user_id, from_status, to_status, note, created_at
@@ -1064,11 +1121,12 @@ ON DUPLICATE KEY UPDATE
   closed_at = VALUES(closed_at), created_at = VALUES(created_at),
   updated_at = VALUES(updated_at);
 
-DELETE history
-FROM maintenance_history history
-JOIN maintenance_tickets seeded_ticket
-  ON seeded_ticket.id = history.maintenance_ticket_id
-WHERE seeded_ticket.public_id LIKE '40000000-0000-4000-8000-%';
+DELETE FROM maintenance_history
+WHERE maintenance_ticket_id IN (
+  SELECT id
+  FROM maintenance_tickets
+  WHERE public_id LIKE '40000000-0000-4000-8000-%'
+);
 
 INSERT INTO maintenance_history (
   maintenance_ticket_id, actor_user_id, event_type,
@@ -1121,11 +1179,12 @@ FROM maintenance_tickets ticket
 WHERE ticket.public_id LIKE '40000000-0000-4000-8000-%'
   AND ticket.status = 'rejected';
 
-DELETE comment
-FROM maintenance_comments comment
-JOIN maintenance_tickets seeded_ticket
-  ON seeded_ticket.id = comment.maintenance_ticket_id
-WHERE seeded_ticket.public_id LIKE '40000000-0000-4000-8000-%';
+DELETE FROM maintenance_comments
+WHERE maintenance_ticket_id IN (
+  SELECT id
+  FROM maintenance_tickets
+  WHERE public_id LIKE '40000000-0000-4000-8000-%'
+);
 
 INSERT INTO maintenance_comments (
   public_id, maintenance_ticket_id, author_user_id, body, is_internal, created_at
@@ -1152,7 +1211,8 @@ WHERE ticket.public_id = '40000000-0000-4000-8000-000000000005';
 
 -- Seed-owned audit rows make the administrator log useful immediately while
 -- remaining safe to refresh independently of real audit history.
-DELETE FROM audit_logs WHERE request_id = 'seed-demo';
+DELETE FROM audit_logs
+WHERE id > 0 AND request_id = 'seed-demo';
 
 INSERT INTO audit_logs (
   public_id, actor_user_id, action, resource_type, resource_public_id,

@@ -79,6 +79,10 @@ adminRouter.get(
   asyncHandler(controller.maintenanceHandler),
 );
 adminRouter.get(
+  "/maintenance-route",
+  asyncHandler(controller.maintenanceRouteHandler),
+);
+adminRouter.get(
   "/maintenance-tickets/:publicId",
   validate(publicIdParam, "params"),
   asyncHandler(controller.maintenanceDetailsHandler),

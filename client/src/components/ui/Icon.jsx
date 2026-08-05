@@ -20,6 +20,7 @@ const paths = {
   close: <><path d="m6 6 12 12M18 6 6 18" /></>,
   upload: <><path d="M12 16V3m0 0L7 8m5-5 5 5" /><path d="M5 14v7h14v-7" /></>,
   shield: <><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6l-8-3Z" /><path d="m9 12 2 2 4-5" /></>,
+  route: <><circle cx="6" cy="18" r="2" /><circle cx="18" cy="6" r="2" /><path d="M8 18h3a3 3 0 0 0 3-3V9a3 3 0 0 1 3-3" /><path d="m10 11-2 2 2 2" /></>,
 };
 
 export function Icon({ name, size = 20 }) {

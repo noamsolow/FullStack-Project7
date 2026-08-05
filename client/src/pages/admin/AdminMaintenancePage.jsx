@@ -7,6 +7,7 @@ import { useApiResource } from "../../hooks/useApiResource.js";
 import { useLoadMoreResource } from "../../hooks/useLoadMoreResource.js";
 import { adminService } from "../../services/portals/adminService.js";
 import { formatDate, titleCase } from "../../utils/format.js";
+import { MaintenanceRoutePlan } from "./MaintenanceRoutePlan.jsx";
 
 const transitions = {
   open: ["acknowledged", "rejected"],
@@ -19,6 +20,7 @@ const transitions = {
 export function AdminMaintenancePage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [selected, setSelected] = useState(null);
+  const [routeVersion, setRouteVersion] = useState(0);
   const load = useCallback(
     ({ page, limit }) => adminService.maintenance({ page, limit, status: statusFilter }),
     [statusFilter],
@@ -32,6 +34,10 @@ export function AdminMaintenancePage() {
         title="Maintenance queue"
         description="Prioritize, assign, update, and discuss campus issues."
         actions={<select aria-label="Filter by status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="">All statuses</option>{["open", "acknowledged", "in_progress", "waiting_for_user", "resolved", "closed", "rejected"].map((value) => <option key={value} value={value}>{titleCase(value)}</option>)}</select>}
+      />
+      <MaintenanceRoutePlan
+        key={routeVersion}
+        onManageTicket={setSelected}
       />
       {queue.loading && <LoadingState />}
       {queue.error && !tickets.length && <ErrorState error={queue.error} onRetry={queue.reload} />}
@@ -52,7 +58,11 @@ export function AdminMaintenancePage() {
         </table>
       </div>
       <LoadMoreButton hasMore={queue.meta.hasMore} loading={queue.loadingMore} error={tickets.length ? queue.error : null} onLoadMore={queue.loadMore} />
-      {selected && <MaintenanceManager publicId={selected.public_id} onClose={() => setSelected(null)} onSaved={() => { setSelected(null); queue.reload(); }} />}
+      {selected && <MaintenanceManager publicId={selected.public_id} onClose={() => setSelected(null)} onSaved={() => {
+        setSelected(null);
+        queue.reload();
+        setRouteVersion((current) => current + 1);
+      }} />}
     </div>
   );
 }
