@@ -58,6 +58,7 @@ operational tables request 10 rows at a time.
 
 | Method | Route |
 |---|---|
+| GET | `/orders/checkout/options` |
 | POST | `/recommendations` |
 | GET/POST | `/orders`, `/orders/checkout` |
 | GET | `/orders/:publicId` |
@@ -110,3 +111,12 @@ GET /admin/audit
 Amounts sent to APIs are integer agorot. Client-provided totals, fees, owner
 IDs, roles, payment results, status histories, and quote expirations are never
 trusted.
+
+Order checkout requires `paymentMethod: "tokens" | "paypal"`. One token covers
+ILS 1 of the server-calculated order total; fractional-shekel totals round up
+to the next token. The checkout-options response
+returns the authenticated customer's current token balance and whether PayPal
+is configured.
+### Customer order progress
+
+`GET /api/orders/progress` requires a customer session and returns active orders oldest-first. Delivery orders include provider-neutral tracking timestamps, calculated progress, remaining demo seconds, and whether customer confirmation is currently allowed.

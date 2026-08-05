@@ -10,11 +10,16 @@ import {
   captureSchema,
   checkoutSchema,
   orderListQuerySchema,
+  orderProgressQuerySchema,
 } from "../validation/orderSchemas.js";
 
 export const orderRouter = Router();
 
 orderRouter.use(authenticate, requireRole("customer"));
+orderRouter.get(
+  "/checkout/options",
+  asyncHandler(controller.checkoutOptionsHandler),
+);
 orderRouter.post(
   "/checkout",
   validate(checkoutSchema),
@@ -24,6 +29,11 @@ orderRouter.get(
   "/",
   validate(orderListQuerySchema, "query"),
   asyncHandler(controller.listHandler),
+);
+orderRouter.get(
+  "/progress",
+  validate(orderProgressQuerySchema, "query"),
+  asyncHandler(controller.progressHandler),
 );
 orderRouter.get(
   "/:publicId",

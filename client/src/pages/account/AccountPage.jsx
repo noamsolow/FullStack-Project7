@@ -55,6 +55,12 @@ export function AccountPage() {
           {error && <ErrorState error={error} />}
           <button className="button button--primary">Save changes</button>
         </form>
+        <section className="card account-tokens">
+          <div className="account-spending__icon"><Icon name="check" /></div>
+          <span className="eyebrow">LevGo token balance</span>
+          <h2>{Number(user.tokenBalance ?? 0).toLocaleString()} tokens</h2>
+          <p>Use tokens for food and shop orders. One token equals ₪1 at checkout.</p>
+        </section>
         <section className="card account-spending">
           <div className="account-spending__icon"><Icon name="cart" /></div>
           <span className="eyebrow">Completed payments</span>

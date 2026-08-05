@@ -1,6 +1,6 @@
 import { orderStatusLabel } from "../../utils/format.js";
 
-const positive = new Set(["active", "open", "ready", "completed", "resolved", "paid", "success"]);
+const positive = new Set(["active", "open", "ready", "arrived", "completed", "resolved", "paid", "success"]);
 const warning = new Set([
   "pending_payment",
   "payment_processing",

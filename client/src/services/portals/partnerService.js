@@ -34,6 +34,7 @@ export const partnerService = {
     },
   ),
   orders: (query = {}) => apiRequest("/partner/orders", { query, cache: false }),
+  deliveryRoute: () => apiRequest("/partner/delivery-route", { cache: false }),
   order: (publicId) => apiRequest(`/partner/orders/${publicId}`, { cache: false }),
   updateOrder: (publicId, body) => apiRequest(`/partner/orders/${publicId}/status`, {
     method: "PATCH",

@@ -14,11 +14,20 @@ function integer(name, fallback, minimum = 0) {
   return value;
 }
 
+function boolean(name, fallback = false) {
+  return (process.env[name] ?? String(fallback)).toLowerCase() === "true";
+}
+
 const nodeEnv = process.env.NODE_ENV ?? "development";
 const jwtSecret = required("JWT_SECRET", nodeEnv === "test"
   ? "test-only-secret-that-is-at-least-32-characters"
   : undefined);
-const emailEnabled = (process.env.EMAIL_ENABLED ?? "false").toLowerCase() === "true";
+const smtpEnabled = boolean("SMTP_ENABLED");
+const deliveryTrackingProvider = required("DELIVERY_TRACKING_PROVIDER", "demo");
+
+if (deliveryTrackingProvider !== "demo") {
+  throw new Error(`Unsupported DELIVERY_TRACKING_PROVIDER: ${deliveryTrackingProvider}`);
+}
 
 if (jwtSecret.length < 32) {
   throw new Error("JWT_SECRET must contain at least 32 characters");
@@ -38,7 +47,7 @@ export const config = Object.freeze({
   },
   allowedCustomerEmailDomains: required(
     "ALLOWED_CUSTOMER_EMAIL_DOMAINS",
-    "jct.ac.il",
+    "g.jct.ac.il",
   )
     .split(",")
     .map((domain) => domain.trim().toLowerCase())
@@ -68,16 +77,22 @@ export const config = Object.freeze({
       "http://localhost:5173/payment/cancel",
     ),
   },
-  email: {
-    enabled: emailEnabled,
-    apiKey: emailEnabled
-      ? required("RESEND_API_KEY")
-      : process.env.RESEND_API_KEY ?? "",
-    from: emailEnabled
-      ? required("EMAIL_FROM")
-      : process.env.EMAIL_FROM ?? "LevGo <onboarding@resend.dev>",
-    replyTo: process.env.EMAIL_REPLY_TO ?? "",
-    timeoutMs: integer("EMAIL_TIMEOUT_MS", 10_000, 1000),
+  smtp: {
+    enabled: smtpEnabled,
+    host: smtpEnabled ? required("SMTP_HOST") : process.env.SMTP_HOST ?? "",
+    port: integer("SMTP_PORT", 587, 1),
+    secure: boolean("SMTP_SECURE"),
+    user: smtpEnabled ? required("SMTP_USER") : process.env.SMTP_USER ?? "",
+    password: smtpEnabled ? required("SMTP_PASS") : process.env.SMTP_PASS ?? "",
+    from: smtpEnabled ? required("SMTP_FROM") : process.env.SMTP_FROM ?? "",
+    replyTo: process.env.SMTP_REPLY_TO ?? "",
+    timeoutMs: integer("SMTP_TIMEOUT_MS", 10_000, 1000),
+  },
+  deliveryTracking: {
+    provider: deliveryTrackingProvider,
+    demoMinSeconds: integer("DEMO_DELIVERY_MIN_SECONDS", 30, 1),
+    demoMaxSeconds: integer("DEMO_DELIVERY_MAX_SECONDS", 60, 1),
+    reconcileIntervalMs: integer("DELIVERY_TRACKING_INTERVAL_MS", 2_000, 500),
   },
   gemini: {
     apiKey: process.env.GEMINI_API_KEY ?? "",

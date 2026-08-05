@@ -8,7 +8,7 @@ ALTER USER 'levgo_app'@'localhost'
   IDENTIFIED BY 'maoz3242';
 
 GRANT SELECT, INSERT, UPDATE, DELETE
-  ON project7.*
+  ON levgo.*
   TO 'levgo_app'@'localhost';
 
 FLUSH PRIVILEGES;

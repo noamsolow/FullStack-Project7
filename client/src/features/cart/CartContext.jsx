@@ -2,24 +2,34 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
+import { useAuth } from "../auth/AuthContext.jsx";
 
 const CART_KEY = "levgo.cart.v2";
+const EMPTY_CART = { vendor: null, items: [] };
 const CartContext = createContext(null);
 
 function readCart() {
   try {
     const value = localStorage.getItem(CART_KEY);
-    return value ? JSON.parse(value) : { vendor: null, items: [] };
+    return value ? JSON.parse(value) : EMPTY_CART;
   } catch {
-    return { vendor: null, items: [] };
+    return EMPTY_CART;
   }
 }
 
 export function CartProvider({ children }) {
+  const { user, checking } = useAuth();
   const [cart, setCartState] = useState(readCart);
+
+  useEffect(() => {
+    if (checking || user) return;
+    setCartState(EMPTY_CART);
+    localStorage.removeItem(CART_KEY);
+  }, [checking, user]);
 
   const save = useCallback((next) => {
     setCartState(next);

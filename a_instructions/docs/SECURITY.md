@@ -32,10 +32,13 @@ never grant access to another order, print job, document, ticket, or image.
 
 ## Payments
 
-The client submits product IDs and quantities, not prices. The order service
-locks product rows, recalculates totals and delivery fees, updates tracked
-stock, and places the order in one transaction. Online payment is currently
-disabled, so no card or PayPal data is collected.
+The client submits product IDs, quantities, and a payment-method choice, not
+prices or token costs. The order service locks product rows, recalculates totals
+and delivery fees, updates tracked stock, and places the order in one
+transaction. Token checkout also locks the customer row, rejects an
+insufficient balance, debits the exact server-calculated total, and writes an
+immutable ledger entry in that transaction. PayPal credentials stay on the
+server, and captures must match the stored provider order, currency, and total.
 
 ## Uploads
 

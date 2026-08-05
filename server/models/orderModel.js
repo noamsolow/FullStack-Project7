@@ -43,9 +43,9 @@ export async function createOrder(data, executor) {
     `INSERT INTO orders (
       public_id, order_number, user_id, vendor_id, fulfillment_type,
       delivery_building_id, delivery_location, subtotal_agorot,
-      delivery_fee_agorot, total_agorot, status, pickup_code,
+      delivery_fee_agorot, total_agorot, payment_method, status, pickup_code,
       reservation_expires_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       data.publicId,
       data.orderNumber,
@@ -57,6 +57,7 @@ export async function createOrder(data, executor) {
       data.subtotalAgorot,
       data.deliveryFeeAgorot,
       data.totalAgorot,
+      data.paymentMethod,
       data.status,
       data.pickupCode,
       data.reservationExpiresAt ?? null,
@@ -135,13 +136,17 @@ export async function findOrderByPublicId(publicId, executor = connection, lock 
 export async function findOrderNotificationByPublicId(publicId, executor = connection) {
   const [rows] = await executor.query(
     `SELECT
-      o.public_id, o.order_number, o.fulfillment_type, o.total_agorot,
-      o.currency, o.status, o.pickup_code,
+      o.id, o.public_id, o.order_number, o.fulfillment_type,
+      o.delivery_location, o.subtotal_agorot, o.delivery_fee_agorot,
+      o.total_agorot, o.currency, o.payment_method, o.status,
+      o.pickup_code, o.created_at,
       u.email AS customer_email, u.display_name AS customer_name,
-      v.name AS vendor_name
+      v.name AS vendor_name,
+      b.short_name AS delivery_building_name
      FROM orders o
      JOIN users u ON u.id = o.user_id
      JOIN vendors v ON v.id = o.vendor_id
+     LEFT JOIN buildings b ON b.id = o.delivery_building_id
      WHERE o.public_id = ?
      LIMIT 1`,
     [publicId],
@@ -239,6 +244,36 @@ export async function listVendorOrders(vendorId, { fetchLimit, offset, status },
      ORDER BY o.created_at DESC, o.id DESC
      LIMIT ? OFFSET ?`,
     params,
+  );
+  return rows;
+}
+
+export async function listVendorDeliveryOrdersForRoute(
+  vendorId,
+  statuses,
+  limit,
+  executor = connection,
+) {
+  if (!Array.isArray(statuses) || statuses.length === 0) return [];
+  const placeholders = statuses.map(() => "?").join(", ");
+  const [rows] = await executor.query(
+    `SELECT
+      o.public_id, o.order_number, o.status, o.delivery_location,
+      o.created_at, o.updated_at,
+      u.display_name AS customer_name,
+      b.campus_code, b.short_name AS building_name
+     FROM orders o
+     JOIN users u ON u.id = o.user_id
+     JOIN buildings b ON b.id = o.delivery_building_id AND b.is_active = TRUE
+     WHERE o.vendor_id = ?
+       AND o.fulfillment_type = 'delivery'
+       AND o.status IN (${placeholders})
+     ORDER BY
+       FIELD(o.status, 'out_for_delivery', 'preparing'),
+       o.created_at,
+       o.id
+     LIMIT ?`,
+    [vendorId, ...statuses, limit],
   );
   return rows;
 }

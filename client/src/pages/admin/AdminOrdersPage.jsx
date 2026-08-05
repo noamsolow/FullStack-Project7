@@ -20,6 +20,7 @@ const statuses = [
   "preparing",
   "ready",
   "out_for_delivery",
+  "arrived",
   "completed",
   "cancelled",
   "cancellation_requested",
@@ -27,14 +28,18 @@ const statuses = [
 ];
 
 function timelineStages(order) {
-  return [
+  const stages = [
     { key: "sent", label: "Sent", statuses: ["placed", "accepted"] },
     { key: "progress", label: "In progress", statuses: ["preparing"] },
     order.fulfillment_type === "delivery"
       ? { key: "handoff", label: "On the way", statuses: ["out_for_delivery"] }
       : { key: "handoff", label: "Ready for pickup", statuses: ["ready"] },
+    ...(order.fulfillment_type === "delivery"
+      ? [{ key: "arrived", label: "Arrived", statuses: ["arrived"] }]
+      : []),
     { key: "completed", label: "Completed", statuses: ["completed"] },
-  ].map((stage) => ({
+  ];
+  return stages.map((stage) => ({
     ...stage,
     event: order.history.find((event) => stage.statuses.includes(event.to_status)),
   }));

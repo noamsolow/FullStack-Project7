@@ -138,7 +138,7 @@ export function AuthPage({ portal = "customer", mode = "login" }) {
           <label>
             Email
             <input name="email" type="email" value={form.email} onChange={update} autoComplete="email" required />
-            {!isPartner && portal === "customer" && isRegister && <small>Use an approved campus email address.</small>}
+            {!isPartner && portal === "customer" && isRegister && <small>Use your @g.jct.ac.il campus email address.</small>}
           </label>
           <label>
             Password

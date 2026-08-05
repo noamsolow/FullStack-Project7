@@ -5,6 +5,7 @@
 | Browse active vendors/products | Yes | Yes | Yes |
 | Manage own profile | Yes | Yes | Yes |
 | Checkout and pay | Yes | No | No |
+| Read/spend own token balance | Yes | No | No |
 | Read own orders | Yes | No | Yes |
 | Manage vendor products | No | Own vendor | Suspend only |
 | Manage vendor orders | No | Own vendor | Support access |
@@ -16,4 +17,3 @@
 | Manage maintenance queue | No | No | Yes |
 | Suspend users/vendors | No | No | Yes |
 | Read audit log | No | No | Yes |
-

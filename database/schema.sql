@@ -1,8 +1,8 @@
-CREATE DATABASE IF NOT EXISTS project7
+CREATE DATABASE IF NOT EXISTS levgo
   CHARACTER SET utf8mb4
   COLLATE utf8mb4_0900_ai_ci;
 
-USE project7;
+USE levgo;
 
 CREATE TABLE IF NOT EXISTS buildings (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -83,6 +83,7 @@ CREATE TABLE IF NOT EXISTS users (
   customer_type ENUM('student', 'teacher') NULL,
   role ENUM('customer', 'vendor_manager', 'admin') NOT NULL DEFAULT 'customer',
   vendor_id BIGINT UNSIGNED NULL,
+  token_balance INT UNSIGNED NOT NULL DEFAULT 0,
   password_hash VARCHAR(255) NOT NULL,
   blocked_at DATETIME NULL,
   deleted_at DATETIME NULL,
@@ -193,6 +194,7 @@ CREATE TABLE IF NOT EXISTS orders (
   subtotal_agorot INT UNSIGNED NOT NULL,
   delivery_fee_agorot INT UNSIGNED NOT NULL DEFAULT 0,
   total_agorot INT UNSIGNED NOT NULL,
+  payment_method ENUM('tokens', 'paypal', 'none') NOT NULL DEFAULT 'none',
   currency CHAR(3) NOT NULL DEFAULT 'ILS',
   status ENUM(
     'pending_payment',
@@ -202,6 +204,7 @@ CREATE TABLE IF NOT EXISTS orders (
     'preparing',
     'ready',
     'out_for_delivery',
+    'arrived',
     'completed',
     'cancelled',
     'cancellation_requested',
@@ -231,6 +234,23 @@ CREATE TABLE IF NOT EXISTS orders (
   INDEX idx_orders_user_created (user_id, created_at),
   INDEX idx_orders_vendor_status (vendor_id, status, created_at),
   INDEX idx_orders_reservation (status, reservation_expires_at)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS order_delivery_tracking (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  order_id BIGINT UNSIGNED NOT NULL,
+  provider VARCHAR(40) NOT NULL,
+  provider_reference VARCHAR(160) NULL,
+  status ENUM('in_transit', 'arrived') NOT NULL DEFAULT 'in_transit',
+  started_at DATETIME(3) NOT NULL,
+  eta_at DATETIME(3) NOT NULL,
+  arrived_at DATETIME(3) NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_order_delivery_tracking_order
+    FOREIGN KEY (order_id) REFERENCES orders(id),
+  CONSTRAINT uq_order_delivery_tracking_order UNIQUE (order_id),
+  INDEX idx_order_delivery_tracking_due (status, eta_at)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS order_items (
@@ -473,6 +493,26 @@ CREATE TABLE IF NOT EXISTS payments (
   INDEX idx_payments_order (order_id),
   INDEX idx_payments_print_job (print_job_id),
   INDEX idx_payments_status (status, created_at)
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS token_transactions (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  public_id CHAR(36) NOT NULL,
+  user_id BIGINT UNSIGNED NOT NULL,
+  order_id BIGINT UNSIGNED NULL,
+  amount_tokens INT NOT NULL,
+  balance_after_tokens INT UNSIGNED NOT NULL,
+  transaction_type ENUM('seed_credit', 'order_payment', 'refund', 'adjustment') NOT NULL,
+  note VARCHAR(300) NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_token_transactions_user
+    FOREIGN KEY (user_id) REFERENCES users(id),
+  CONSTRAINT fk_token_transactions_order
+    FOREIGN KEY (order_id) REFERENCES orders(id),
+  CONSTRAINT uq_token_transactions_public_id UNIQUE (public_id),
+  CONSTRAINT uq_token_transactions_order_type UNIQUE (order_id, transaction_type),
+  CONSTRAINT chk_token_transactions_amount CHECK (amount_tokens <> 0),
+  INDEX idx_token_transactions_user_created (user_id, created_at)
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS cancellation_requests (

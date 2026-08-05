@@ -25,9 +25,8 @@ React page
   -> MySQL
 ```
 
-Services can call provider adapters for PayPal and OpenAI. PayPal is currently
-disabled by configuration, so orders are placed without an online payment.
-Controllers never
+Services can call provider adapters for PayPal and Gemini. Commerce checkout
+explicitly selects either PayPal or database-backed LevGo tokens. Controllers never
 run SQL, models never produce HTTP responses, and route files contain no
 business rules.
 
@@ -78,11 +77,14 @@ client/src/
 
 - All database and API money values are integer agorot.
 - Currency is fixed to ILS.
+- LevGo tokens are integer stored-value units; one token covers ILS 1.
 - The server recalculates product prices, delivery fees, print quotes, and
   totals.
+- Token balance rows are locked and debited in the same transaction that
+  reserves stock and creates an order; every debit has a ledger row.
 - PayPal credentials and OAuth tokens never reach the browser.
-- Online payment is currently disabled. Catalog prices, delivery fees, print
-  quotes, and totals remain server-authoritative.
+- PayPal checkout is available only when configured, and all provider captures
+  are verified against the stored amount, currency, and order.
 - Version 1 records paid cancellation requests but performs no automatic
   refund.
 
@@ -110,3 +112,6 @@ client/src/
 - Small reference collections that must be complete for a form or campus map
   remain bounded, full-list requests rather than Load More screens.
 - Order, print, and ticket status updates use polling rather than WebSockets.
+### Delivery tracking
+
+Supplier dispatch starts persisted delivery tracking through a provider interface. The default demo provider assigns a 30-60 second ETA. A background reconciler and customer progress reads move due deliveries to `arrived` idempotently; client countdowns are visual only and never authorize completion.

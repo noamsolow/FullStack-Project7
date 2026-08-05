@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { CampusMap } from "../../../components/campus/CampusMap.jsx";
 import { Icon } from "../../../components/ui/Icon.jsx";
@@ -11,12 +11,14 @@ import { useApiResource } from "../../../hooks/useApiResource.js";
 import { catalogService } from "../../../services/catalog/catalogService.js";
 import { orderService } from "../../../services/commerce/orderService.js";
 import { formatMoney } from "../../../utils/format.js";
+import { readSession, writeSession } from "../../../utils/session.js";
 
 export function CartPage() {
   const cart = useCart();
-  const { user } = useAuth();
+  const { user, setUser } = useAuth();
   const navigate = useNavigate();
   const [fulfillment, setFulfillment] = useState("pickup");
+  const [paymentMethod, setPaymentMethod] = useState("tokens");
   const [buildingId, setBuildingId] = useState("");
   const [location, setLocation] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -26,12 +28,26 @@ export function CartPage() {
     [cart.vendor],
   );
   const vendor = useApiResource(loadVendor, [loadVendor]);
+  const loadCheckoutOptions = useCallback(() => orderService.checkoutOptions(), []);
+  const paymentOptions = useApiResource(loadCheckoutOptions, [loadCheckoutOptions]);
   const details = vendor.data?.data;
   const selectedZone = details?.deliveryZones?.find(
     (zone) => String(zone.building_id) === String(buildingId),
   );
   const total = cart.subtotalAgorot + (fulfillment === "delivery" ? selectedZone?.fee_agorot ?? 0 : 0);
   const canDeliver = details?.delivery_enabled;
+  const tokenBalance = Number(
+    paymentOptions.data?.data?.tokenBalance ?? user?.tokenBalance ?? 0,
+  );
+  const tokensEnabled = Boolean(paymentOptions.data?.data?.tokensEnabled);
+  const tokenCost = Math.ceil(total / 100);
+  const canPayWithTokens = tokensEnabled && tokenBalance >= tokenCost;
+  const paypalEnabled = Boolean(paymentOptions.data?.data?.paypalEnabled);
+
+  useEffect(() => {
+    if (!paymentOptions.data || canPayWithTokens || !paypalEnabled) return;
+    setPaymentMethod("paypal");
+  }, [canPayWithTokens, paymentOptions.data, paypalEnabled]);
 
   const groupedNotice = useMemo(() => {
     if (fulfillment !== "delivery" || !selectedZone) return null;
@@ -47,6 +63,7 @@ export function CartPage() {
     setError(null);
     try {
       const result = await orderService.checkout({
+        paymentMethod,
         items: cart.items.map((item) => ({
           productId: item.public_id,
           quantity: item.quantity,
@@ -63,6 +80,15 @@ export function CartPage() {
         }));
         window.location.assign(result.data.approvalUrl);
         return;
+      }
+      if (result.data.paymentMethod === "tokens") {
+        const updatedUser = {
+          ...user,
+          tokenBalance: result.data.remainingTokens,
+        };
+        setUser(updatedUser);
+        const session = readSession();
+        if (session?.token) writeSession({ ...session, user: updatedUser });
       }
       cart.clear();
       navigate(`/orders/${result.data.orderPublicId}`);
@@ -81,7 +107,7 @@ export function CartPage() {
           icon="cart"
           title="Your cart is empty"
           message="Choose something from Eat or Shop and it will wait here."
-          action={<Link className="button button--primary" to="/eat">Browse campus options</Link>}
+          action={<Link className="button button--primary" to="/services">Browse campus services</Link>}
         />
       </div>
     );
@@ -169,11 +195,44 @@ export function CartPage() {
               )}
             </div>
           )}
+          <h2 className="checkout-section-title">How would you like to pay?</h2>
+          <div className="payment-options">
+            <button
+              type="button"
+              className={paymentMethod === "tokens" ? "selected" : ""}
+              onClick={() => setPaymentMethod("tokens")}
+              disabled={!canPayWithTokens}
+            >
+              <Icon name="check" />
+              <span>
+                <strong>LevGo tokens</strong>
+                <small>{tokensEnabled ? `${tokenBalance.toLocaleString()} available` : "Setup required"}</small>
+              </span>
+            </button>
+            <button
+              type="button"
+              className={paymentMethod === "paypal" ? "selected" : ""}
+              onClick={() => setPaymentMethod("paypal")}
+              disabled={!paypalEnabled}
+            >
+              <span className="paypal-mark">P</span>
+              <span>
+                <strong>PayPal</strong>
+                <small>{paypalEnabled ? "Secure PayPal checkout" : "Currently unavailable"}</small>
+              </span>
+            </button>
+          </div>
+          {!canPayWithTokens && (
+            <p className="delivery-notice">
+              This order needs {tokenCost.toLocaleString()} tokens. Choose PayPal or reduce the cart.
+            </p>
+          )}
           <dl className="price-summary">
             <div><dt>Items</dt><dd>{formatMoney(cart.subtotalAgorot)}</dd></div>
             <div><dt>Delivery</dt><dd>{fulfillment === "delivery" ? formatMoney(selectedZone?.fee_agorot ?? 0) : "Free"}</dd></div>
             <div className="price-summary__total"><dt>Total</dt><dd>{formatMoney(total)}</dd></div>
           </dl>
+          {paymentOptions.error && <ErrorState error={paymentOptions.error} onRetry={paymentOptions.reload} />}
           {error && <ErrorState error={error} />}
           <button
             className="button button--primary button--large button--full"
@@ -181,15 +240,23 @@ export function CartPage() {
             disabled={
               submitting
               || vendor.loading
+              || paymentOptions.loading
+              || Boolean(paymentOptions.error)
+              || (paymentMethod === "tokens" && !canPayWithTokens)
+              || (paymentMethod === "paypal" && !paypalEnabled)
               || (fulfillment === "delivery" && (
                 !selectedZone
                 || !location.trim()
               ))
             }
           >
-            {submitting ? "Placing order..." : user ? "Place order" : "Sign in to order"}
+            {submitting
+              ? "Placing order..."
+              : paymentMethod === "paypal"
+                ? "Continue to PayPal"
+                : `Pay ${tokenCost.toLocaleString()} tokens`}
           </button>
-          <p className="secure-note"><Icon name="shield" size={16} /> No online payment is required. Prices and totals are verified by LevGo’s server.</p>
+          <p className="secure-note"><Icon name="shield" size={16} /> Prices, delivery fees, token balances, and PayPal captures are verified by the server.</p>
         </aside>
       </div>
     </div>

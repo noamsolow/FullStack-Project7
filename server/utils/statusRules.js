@@ -5,6 +5,7 @@ export const orderTransitions = Object.freeze({
   preparing: ["ready", "out_for_delivery", "needs_attention"],
   // Delivery orders that reached ready in the previous flow can continue.
   ready: ["out_for_delivery"],
+  out_for_delivery: ["arrived"],
 });
 
 export const printTransitions = Object.freeze({

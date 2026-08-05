@@ -74,6 +74,10 @@ partnerRouter.get(
   asyncHandler(controller.ordersHandler),
 );
 partnerRouter.get(
+  "/delivery-route",
+  asyncHandler(controller.deliveryRouteHandler),
+);
+partnerRouter.get(
   "/orders/:publicId",
   validate(publicIdParam, "params"),
   asyncHandler(controller.orderDetailsHandler),
@@ -107,4 +111,3 @@ partnerRouter.patch(
   validate(updatePrintStatusSchema),
   asyncHandler(controller.updatePrintHandler),
 );
-

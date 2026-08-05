@@ -19,7 +19,7 @@ export async function listCustomerShoppingHistory(userId, executor = connection)
      WHERE o.user_id = ?
        AND o.status IN (
          'placed', 'accepted', 'preparing', 'ready',
-         'out_for_delivery', 'completed'
+         'out_for_delivery', 'arrived', 'completed'
        )
      GROUP BY
        p.id, p.public_id, oi.product_name, p.need_type,

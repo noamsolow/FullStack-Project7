@@ -10,9 +10,10 @@ const nav = [
 ];
 
 export function AppHeader() {
-  const { user, logout } = useAuth();
+  const { user, checking, logout } = useAuth();
   const { count } = useCart();
   const navigate = useNavigate();
+  const canUseCart = !checking && user?.role === "customer";
 
   function handleLogout() {
     logout();
@@ -30,10 +31,12 @@ export function AppHeader() {
           ))}
         </nav>
         <div className="header-actions">
-          <Link to="/cart" className="icon-button cart-button" aria-label={`Cart with ${count} items`}>
-            <Icon name="cart" />
-            {count > 0 && <span>{count}</span>}
-          </Link>
+          {canUseCart && (
+            <Link to="/cart" className="icon-button cart-button" aria-label={`Cart with ${count} items`}>
+              <Icon name="cart" />
+              {count > 0 && <span>{count}</span>}
+            </Link>
+          )}
           {user ? (
             <>
               <button type="button" className="header-logout" onClick={handleLogout}>

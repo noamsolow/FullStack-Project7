@@ -15,6 +15,7 @@
 - [ ] Verify customer, partner, and admin login/guards.
 - [ ] Attempt ownership access with a changed public UUID.
 - [ ] Run two concurrent stock checkouts and confirm no oversell.
+- [ ] Run two concurrent token checkouts and confirm the balance cannot go negative.
 - [ ] Verify delivery-zone minimum and fee calculations.
 - [ ] Verify unrelated managers cannot read products, orders, or PDFs.
 - [ ] Verify unrelated customers cannot read private orders, PDFs, or tickets.

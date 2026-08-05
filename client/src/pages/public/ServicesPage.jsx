@@ -29,7 +29,6 @@ const groups = [
         meta: "Building 12",
       },
     ],
-    browse: { to: "/eat", label: "Browse all food services" },
   },
   {
     id: "office",
@@ -52,7 +51,6 @@ const groups = [
         meta: "Building 26",
       },
     ],
-    browse: { to: "/shop", label: "Browse office products" },
   },
   {
     id: "maintenance",
@@ -89,6 +87,7 @@ export function ServicesPage() {
 
   return (
     <div className="page-container services-page">
+      <Link className="back-link" to="/">&larr; Back home</Link>
       <PageHeader
         eyebrow="Campus services"
         title="What can we handle for you?"
@@ -141,11 +140,6 @@ export function ServicesPage() {
                 </Link>
               ))}
             </div>
-            {group.browse && (
-              <Link className="services-group__browse" to={group.browse}>
-                {group.browse.label} <Icon name="arrow" size={18} />
-              </Link>
-            )}
           </section>
         ))}
       </div>

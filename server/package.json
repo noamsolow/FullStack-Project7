@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "node --watch --env-file-if-exists=.env index.js",
     "start": "node --env-file-if-exists=.env index.js",
+    "test": "node --env-file-if-exists=.env --test",
     "lint": "eslint ."
   },
   "engines": {
@@ -21,6 +22,7 @@
     "levgo": "file:..",
     "multer": "2.2.0",
     "mysql2": "3.22.5",
+    "nodemailer": "^9.0.4",
     "pdf-lib": "^1.17.1"
   },
   "devDependencies": {

@@ -5,8 +5,10 @@ import { EmptyState, ErrorState, LoadingState } from "../../components/ui/PageSt
 import { StatusChip } from "../../components/ui/StatusChip.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
 import { useLoadMoreResource } from "../../hooks/useLoadMoreResource.js";
+import { usePolling } from "../../hooks/usePolling.js";
 import { partnerService } from "../../services/portals/partnerService.js";
 import { formatDate, formatMoney, orderStatusLabel, titleCase } from "../../utils/format.js";
+import { VendorDeliveryRoutePlan } from "./VendorDeliveryRoutePlan.jsx";
 
 function nextStatuses(order) {
   if (["placed", "accepted"].includes(order.status)) {
@@ -24,34 +26,108 @@ function nextStatuses(order) {
   return [];
 }
 
+const orderCategories = [
+  {
+    key: "sent",
+    title: "Sent",
+    description: "New customer orders waiting for supplier action.",
+    matches: (order) => ["placed", "accepted"].includes(order.status),
+  },
+  {
+    key: "preparation",
+    title: "In progress",
+    description: "Orders currently being prepared.",
+    matches: (order) => order.status === "preparing"
+      || (order.status === "ready" && order.fulfillment_type === "delivery"),
+  },
+  {
+    key: "ready",
+    title: "Ready for pickup",
+    description: "Prepared pickup orders waiting for the customer.",
+    matches: (order) => order.status === "ready" && order.fulfillment_type === "pickup",
+  },
+  {
+    key: "on-the-way",
+    title: "On the way",
+    description: "Delivery orders currently travelling to the customer.",
+    matches: (order) => order.status === "out_for_delivery",
+  },
+  {
+    key: "arrived",
+    title: "Arrived",
+    description: "Delivered orders waiting for customer confirmation.",
+    matches: (order) => order.status === "arrived",
+  },
+  {
+    key: "completed",
+    title: "Completed",
+    description: "Orders accepted or collected by the customer.",
+    matches: (order) => order.status === "completed",
+  },
+  {
+    key: "attention",
+    title: "Attention and cancelled",
+    description: "Orders that need review or are no longer active.",
+    matches: (order) => ["needs_attention", "cancellation_requested", "cancelled"].includes(order.status),
+  },
+];
+
+function OrderCategory({ category, orders, onManage }) {
+  const categoryOrders = orders.filter(category.matches);
+  return (
+    <section className={`partner-order-category partner-order-category--${category.key}`}>
+      <header>
+        <div><h2>{category.title}</h2><p>{category.description}</p></div>
+        <span>{categoryOrders.length}</span>
+      </header>
+      {!categoryOrders.length ? (
+        <p className="partner-order-category__empty">No orders in this category.</p>
+      ) : (
+        <div className="data-table-wrap">
+          <table className="data-table">
+            <thead><tr><th>Order</th><th>Customer</th><th>Fulfillment</th><th>Total</th><th>Status</th><th></th></tr></thead>
+            <tbody>{categoryOrders.map((order) => (
+              <tr key={order.public_id}>
+                <td><strong>{order.order_number}</strong><small>{formatDate(order.created_at)}</small></td>
+                <td>{order.customer_name}</td>
+                <td>{titleCase(order.fulfillment_type)}{order.delivery_building_name && <small>{order.delivery_building_name}</small>}</td>
+                <td>{formatMoney(order.total_agorot)}</td>
+                <td><StatusChip status={order.status} /></td>
+                <td className="row-actions"><button onClick={() => onManage(order)}>Manage</button></td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function PartnerOrdersPage() {
   const [selected, setSelected] = useState(null);
   const load = useCallback(
     ({ page, limit }) => partnerService.orders({ page, limit }),
     [],
   );
-  const history = useLoadMoreResource(load, { pageSize: 10 });
+  const history = useLoadMoreResource(load, { pageSize: 12 });
   const orders = history.items;
+  usePolling(history.refresh, 3_000, !history.loading);
   return (
     <div className="portal-page">
       <PageHeader eyebrow="Operations" title="Orders" description="Move orders into progress, then mark them ready for pickup or on the way." />
+      <VendorDeliveryRoutePlan onManageOrder={setSelected} />
       {history.loading && <LoadingState />}
       {history.error && !orders.length && <ErrorState error={history.error} onRetry={history.reload} />}
       {!history.loading && !history.error && !orders.length && <EmptyState icon="orders" title="No orders yet" message="Paid customer orders will appear here." />}
-      <div className="data-table-wrap">
-        <table className="data-table">
-          <thead><tr><th>Order</th><th>Customer</th><th>Fulfillment</th><th>Total</th><th>Status</th><th></th></tr></thead>
-          <tbody>{orders.map((order) => (
-            <tr key={order.public_id}>
-              <td><strong>{order.order_number}</strong><small>{formatDate(order.created_at)}</small></td>
-              <td>{order.customer_name}</td>
-              <td>{titleCase(order.fulfillment_type)}{order.delivery_building_name && <small>{order.delivery_building_name}</small>}</td>
-              <td>{formatMoney(order.total_agorot)}</td>
-              <td><StatusChip status={order.status} /></td>
-              <td className="row-actions"><button onClick={() => setSelected(order)}>Manage</button></td>
-            </tr>
-          ))}</tbody>
-        </table>
+      <div className="partner-order-categories">
+        {orderCategories.map((category) => (
+          <OrderCategory
+            key={category.key}
+            category={category}
+            orders={orders}
+            onManage={setSelected}
+          />
+        ))}
       </div>
       <LoadMoreButton hasMore={history.meta.hasMore} loading={history.loadingMore} error={orders.length ? history.error : null} onLoadMore={history.loadMore} />
       {selected && <OrderManager publicId={selected.public_id} onClose={() => setSelected(null)} onSaved={() => { setSelected(null); history.reload(); }} />}
@@ -68,6 +144,11 @@ function OrderManager({ publicId, onClose, onSaved }) {
   const [busy, setBusy] = useState(false);
   const order = data?.data;
   const availableStatuses = order ? nextStatuses(order) : [];
+  usePolling(
+    reload,
+    3_000,
+    Boolean(order && !["completed", "cancelled"].includes(order.status)),
+  );
 
   async function update(event) {
     event.preventDefault();
@@ -100,7 +181,7 @@ function OrderManager({ publicId, onClose, onSaved }) {
               {actionError && <ErrorState error={actionError} />}
               <button className="button button--primary button--full" disabled={busy}>{busy ? "Updating..." : "Update order"}</button>
             </form>
-          ) : <p className="muted">{["ready", "out_for_delivery"].includes(order.status) ? "Waiting for the customer to confirm receipt." : "No online transition is available from this status."}</p>}
+          ) : <p className="muted">{["ready", "out_for_delivery", "arrived"].includes(order.status) ? "Waiting for the customer to confirm receipt." : "No online transition is available from this status."}</p>}
         </>}
       </section>
     </div>

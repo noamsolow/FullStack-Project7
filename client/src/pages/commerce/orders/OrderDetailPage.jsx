@@ -43,6 +43,7 @@ export function OrderDetailPage() {
     setActionError(null);
     try {
       await orderService.complete(publicId);
+      window.dispatchEvent(new Event("levgo:orders-changed"));
       setConfirmingReceipt(false);
       await reload();
     } catch (caught) {
@@ -58,7 +59,7 @@ export function OrderDetailPage() {
 
   const canCancel = ["pending_payment", "placed"].includes(order.status);
   const canConfirmReceipt = (
-    order.fulfillment_type === "delivery" && order.status === "out_for_delivery"
+    order.fulfillment_type === "delivery" && order.status === "arrived"
   ) || (
     order.fulfillment_type === "pickup" && order.status === "ready"
   );
@@ -108,7 +109,7 @@ export function OrderDetailPage() {
           </article>
         </section>
         <aside className="detail-sidebar">
-          {["ready", "completed"].includes(order.status) && (
+          {order.fulfillment_type === "pickup" && ["ready", "completed"].includes(order.status) && (
             <section className="pickup-card">
               <span>Your pickup code</span>
               <strong>{order.pickup_code}</strong>
@@ -121,7 +122,8 @@ export function OrderDetailPage() {
               <div><dt>Method</dt><dd>{titleCase(order.fulfillment_type)}</dd></div>
               {order.delivery_building_name && <div><dt>Building</dt><dd>{order.delivery_building_name}</dd></div>}
               {order.delivery_location && <div><dt>Meeting point</dt><dd>{order.delivery_location}</dd></div>}
-              <div><dt>Online payment</dt><dd>{order.payment ? titleCase(order.payment.status) : "Not required"}</dd></div>
+              <div><dt>Payment method</dt><dd>{order.payment_method === "tokens" ? "LevGo tokens" : titleCase(order.payment_method)}</dd></div>
+              {order.payment && <div><dt>PayPal status</dt><dd>{titleCase(order.payment.status)}</dd></div>}
             </dl>
           </section>
           {canConfirmReceipt && (

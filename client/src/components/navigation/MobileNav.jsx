@@ -5,14 +5,14 @@ import { Icon } from "../ui/Icon.jsx";
 const items = [
   { to: "/", icon: "home", label: "Home", end: true },
   { to: "/services", icon: "shop", label: "Services" },
-  { to: "/cart", icon: "cart", label: "Cart" },
 ];
 
 export function MobileNav() {
-  const { user } = useAuth();
-  const visibleItems = user
+  const { user, checking } = useAuth();
+  const visibleItems = !checking && user?.role === "customer"
     ? [
       ...items,
+      { to: "/cart", icon: "cart", label: "Cart" },
       { to: "/orders", icon: "orders", label: "Orders" },
       { to: "/account", icon: "user", label: "Account" },
     ]

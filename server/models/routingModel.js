@@ -32,3 +32,21 @@ export async function loadCampusRouteGraph(executor = connection) {
 
   return { nodes, edges };
 }
+
+export async function findVendorRouteDepot(vendorId, executor = connection) {
+  const [rows] = await executor.query(
+    `SELECT
+      v.public_id AS vendor_public_id,
+      v.name AS vendor_name,
+      b.campus_code,
+      b.short_name AS building_name
+     FROM vendors v
+     JOIN buildings b ON b.id = v.building_id AND b.is_active = TRUE
+     WHERE v.id = ?
+       AND v.status = 'active'
+       AND v.deleted_at IS NULL
+     LIMIT 1`,
+    [vendorId],
+  );
+  return rows[0] ?? null;
+}

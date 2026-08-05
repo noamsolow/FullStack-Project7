@@ -1,7 +1,7 @@
 import mysql from "mysql2/promise";
 import { config } from "../config/index.js";
 
-export const connection = await mysql.createConnection({
+export const connection = mysql.createPool({
   host: config.db.host,
   port: config.db.port,
   database: config.db.database,
@@ -11,17 +11,22 @@ export const connection = await mysql.createConnection({
   timezone: "Z",
   decimalNumbers: true,
   namedPlaceholders: false,
+  waitForConnections: true,
+  connectionLimit: 10,
 });
 
 export async function withTransaction(callback) {
+  const transaction = await connection.getConnection();
   try {
-    await connection.beginTransaction();
-    const result = await callback(connection);
-    await connection.commit();
+    await transaction.beginTransaction();
+    const result = await callback(transaction);
+    await transaction.commit();
     return result;
   } catch (error) {
-    await connection.rollback();
+    await transaction.rollback();
     throw error;
+  } finally {
+    transaction.release();
   }
 }
 

@@ -1,6 +1,7 @@
 import * as partner from "../services/partnerService.js";
 import * as orders from "../services/orderService.js";
 import * as printing from "../services/printService.js";
+import * as vendorRouting from "../services/vendorRoutingService.js";
 
 const context = (request) => ({ requestId: request.id, ip: request.ip });
 
@@ -70,6 +71,12 @@ export async function ordersHandler(request, response) {
   response.json(await orders.partnerOrders(request.user, request.query));
 }
 
+export async function deliveryRouteHandler(request, response) {
+  response.json({
+    data: await vendorRouting.vendorDeliveryRoutePlan(request.user),
+  });
+}
+
 export async function orderDetailsHandler(request, response) {
   response.json({
     data: await orders.orderDetails(request.user, request.params.publicId),
@@ -118,4 +125,3 @@ export async function updatePrintHandler(request, response) {
     ),
   });
 }
-

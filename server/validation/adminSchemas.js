@@ -45,6 +45,7 @@ export const adminOrdersQuerySchema = Joi.object({
     "preparing",
     "ready",
     "out_for_delivery",
+    "arrived",
     "completed",
     "cancelled",
     "cancellation_requested",

@@ -2,6 +2,7 @@ import Joi from "joi";
 import { pagination, publicId } from "./common.js";
 
 export const checkoutSchema = Joi.object({
+  paymentMethod: Joi.string().valid("tokens", "paypal").required(),
   items: Joi.array()
     .items(Joi.object({
       productId: publicId.required(),
@@ -37,11 +38,17 @@ export const orderListQuerySchema = Joi.object({
     "preparing",
     "ready",
     "out_for_delivery",
+    "arrived",
     "completed",
     "cancelled",
     "cancellation_requested",
     "needs_attention",
   ),
+});
+
+export const orderProgressQuerySchema = Joi.object({
+  page: Joi.number().integer().min(1).default(1),
+  limit: Joi.number().integer().min(1).max(50).default(3),
 });
 
 export const updateOrderStatusSchema = Joi.object({

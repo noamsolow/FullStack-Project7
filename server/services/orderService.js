@@ -26,6 +26,7 @@ import {
   setPaymentProcessing,
 } from "../models/orderModel.js";
 import { findDeliveryZone } from "../models/catalogModel.js";
+import { debitTokens, findTokenBalance } from "../models/tokenModel.js";
 import { writeAudit } from "../models/auditModel.js";
 import {
   capturePayPalOrder,
@@ -43,7 +44,11 @@ import { payPalToAgorot } from "../utils/money.js";
 import { paginated, paginationFrom } from "../utils/pagination.js";
 import { calculateDeliveryFeeAgorot } from "../utils/deliveryPricing.js";
 import { canTransition, orderTransitions } from "../utils/statusRules.js";
-import { sendOrderUpdateEmail } from "./orderEmailService.js";
+import { orderEmailEvents, sendOrderEmail } from "./orderEmailService.js";
+import {
+  customerOrderProgress,
+  startTrackingForOrder,
+} from "./deliveryTrackingService.js";
 import { requireMembership } from "./partnerService.js";
 
 function normalizeItems(items) {
@@ -59,6 +64,7 @@ function normalizeItems(items) {
 
 async function createStoredOrder(user, input) {
   const requested = normalizeItems(input.items);
+  const paypalPayment = input.paymentMethod === "paypal";
   if (requested.some((item) => item.quantity > 20)) {
     throw new AppError(400, "INVALID_QUANTITY", "No product may exceed 20 units");
   }
@@ -67,6 +73,9 @@ async function createStoredOrder(user, input) {
   }
 
   return withTransaction(async (connection) => {
+    const startingTokenBalance = paypalPayment
+      ? null
+      : await findTokenBalance(user.id, connection, true);
     const products = await lockProductsByPublicIds(
       requested.map((item) => item.productId),
       connection,
@@ -135,6 +144,7 @@ async function createStoredOrder(user, input) {
     }
 
     const totalAgorot = subtotalAgorot + deliveryFeeAgorot;
+    const tokenCost = Math.ceil(totalAgorot / 100);
 
     for (const item of preparedItems.filter((value) => value.trackedStock)) {
       if (!(await decrementStock(item.productId, item.quantity, connection))) {
@@ -156,22 +166,39 @@ async function createStoredOrder(user, input) {
       subtotalAgorot,
       deliveryFeeAgorot,
       totalAgorot,
-      status: config.paypal.enabled ? "pending_payment" : "placed",
+      paymentMethod: input.paymentMethod,
+      status: paypalPayment ? "pending_payment" : "placed",
       pickupCode: shortCode(),
-      reservationExpiresAt: config.paypal.enabled
+      reservationExpiresAt: paypalPayment
         ? new Date(Date.now() + 20 * 60 * 1000)
         : null,
     }, connection);
     await insertOrderItems(orderId, preparedItems, connection);
+    const remainingTokens = paypalPayment
+      ? null
+      : await debitTokens({
+        publicId: publicId(),
+        userId: user.id,
+        orderId,
+        amountTokens: tokenCost,
+        note: `Token payment for ${orderPublicId}`,
+      }, connection);
+    if (!paypalPayment && remainingTokens === null) {
+      throw new AppError(
+        409,
+        "INSUFFICIENT_TOKENS",
+        `This order needs ${tokenCost} tokens; your balance is ${startingTokenBalance ?? 0}`,
+      );
+    }
     await addOrderHistory({
       orderId,
       actorUserId: user.id,
-      toStatus: config.paypal.enabled ? "pending_payment" : "placed",
-      note: config.paypal.enabled
+      toStatus: paypalPayment ? "pending_payment" : "placed",
+      note: paypalPayment
         ? "Stock reserved for 20 minutes"
-        : "Order placed without online payment",
+        : `${tokenCost} LevGo tokens paid`,
     }, connection);
-    const paymentId = config.paypal.enabled
+    const paymentId = paypalPayment
       ? await createOrderPayment({
         publicId: publicId(),
         orderId,
@@ -185,6 +212,9 @@ async function createStoredOrder(user, input) {
       paymentId,
       amountAgorot: totalAgorot,
       vendorName: first.vendor_name,
+      paymentMethod: input.paymentMethod,
+      remainingTokens,
+      tokensSpent: paypalPayment ? null : tokenCost,
     };
   });
 }
@@ -206,22 +236,32 @@ async function compensateCheckout(order, code) {
 }
 
 export async function checkout(user, input, context) {
+  if (input.paymentMethod === "paypal" && !config.paypal.enabled) {
+    throw new AppError(503, "PAYMENTS_DISABLED", "PayPal checkout is currently unavailable");
+  }
+  if (input.paymentMethod === "tokens" && await findTokenBalance(user.id) === null) {
+    throw new AppError(503, "TOKENS_NOT_CONFIGURED", "Token checkout is not configured yet");
+  }
   const stored = await createStoredOrder(user, input);
-  if (!config.paypal.enabled) {
+  if (stored.paymentMethod === "tokens") {
     await writeAudit({
       actorUserId: user.id,
-      action: "order.place_without_payment",
+      action: "order.checkout_tokens",
       resourceType: "order",
       resourcePublicId: stored.orderPublicId,
+      summary: `${stored.tokensSpent} tokens spent`,
       requestId: context.requestId,
     });
-    await sendOrderUpdateEmail(stored.orderPublicId, "placed");
+    await sendOrderEmail(stored.orderPublicId, orderEmailEvents.confirmed);
     return {
       orderPublicId: stored.orderPublicId,
       amountAgorot: stored.amountAgorot,
       currency: "ILS",
       status: "placed",
       paymentRequired: false,
+      paymentMethod: "tokens",
+      tokensSpent: stored.tokensSpent,
+      remainingTokens: stored.remainingTokens,
     };
   }
 
@@ -253,6 +293,17 @@ export async function checkout(user, input, context) {
     currency: "ILS",
     reservationMinutes: 20,
     paymentRequired: true,
+    paymentMethod: "paypal",
+  };
+}
+
+export async function checkoutOptions(user) {
+  const tokenBalance = await findTokenBalance(user.id);
+  return {
+    tokenBalance: tokenBalance ?? 0,
+    tokensEnabled: tokenBalance !== null,
+    tokenRate: { tokens: 1, currency: "ILS", amountAgorot: 100 },
+    paypalEnabled: config.paypal.enabled,
   };
 }
 
@@ -340,7 +391,7 @@ export async function captureOrderPayment(user, orderPublicId, input, context) {
     resourcePublicId: orderPublicId,
     requestId: context.requestId,
   });
-  await sendOrderUpdateEmail(orderPublicId, "paid");
+  await sendOrderEmail(orderPublicId, orderEmailEvents.confirmed);
   return orderDetails(user, orderPublicId);
 }
 
@@ -387,6 +438,10 @@ export async function customerOrders(user, query) {
   return paginated(rows, paging.page, paging.limit);
 }
 
+export async function customerProgress(user, query) {
+  return customerOrderProgress(user, query);
+}
+
 export async function partnerOrders(user, query) {
   const membership = await requireMembership(user.id);
   const paging = paginationFrom(query);
@@ -430,6 +485,9 @@ export async function updatePartnerOrder(user, publicIdValue, input, context) {
       throw new AppError(400, "DELIVERY_ORDER", "Delivery orders must be marked as out for delivery");
     }
     await setOrderStatus(order.id, input.status, connection);
+    if (input.status === "out_for_delivery") {
+      await startTrackingForOrder(order, connection);
+    }
     await addOrderHistory({
       orderId: order.id,
       actorUserId: user.id,
@@ -448,7 +506,6 @@ export async function updatePartnerOrder(user, publicIdValue, input, context) {
     summary: `${updated.status} -> ${input.status}`,
     requestId: context.requestId,
   });
-  await sendOrderUpdateEmail(publicIdValue, input.status);
   return orderDetails(user, publicIdValue);
 }
 
@@ -460,12 +517,12 @@ export async function completeCustomerOrder(user, publicIdValue, context) {
     if (order.status === "completed") return { alreadyCompleted: true };
 
     const confirmableStatus = order.fulfillment_type === "delivery"
-      ? "out_for_delivery"
+      ? "arrived"
       : "ready";
     if (order.status !== confirmableStatus) {
       throw conflict(
         order.fulfillment_type === "delivery"
-          ? "This delivery cannot be confirmed before it is on the way"
+          ? "This delivery cannot be confirmed before it arrives"
           : "This pickup cannot be confirmed before it is ready",
         "ORDER_NOT_CONFIRMABLE",
       );
@@ -492,7 +549,7 @@ export async function completeCustomerOrder(user, publicIdValue, context) {
       resourcePublicId: publicIdValue,
       requestId: context.requestId,
     });
-    await sendOrderUpdateEmail(publicIdValue, "completed");
+    await sendOrderEmail(publicIdValue, orderEmailEvents.completed);
   }
   return orderDetails(user, publicIdValue);
 }
@@ -544,10 +601,6 @@ export async function cancelOrRequestOrder(user, publicIdValue, input, context) 
     resourcePublicId: publicIdValue,
     requestId: context.requestId,
   });
-  await sendOrderUpdateEmail(
-    publicIdValue,
-    result === "cancelled" ? "cancelled" : "cancellation_requested",
-  );
   return orderDetails(user, publicIdValue);
 }
 
@@ -574,7 +627,6 @@ export async function expireReservations() {
     });
     if (didCancel) {
       cancelled += 1;
-      await sendOrderUpdateEmail(item.public_id, "cancelled");
     }
   }
   return cancelled;

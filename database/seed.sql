@@ -1,4 +1,4 @@
-USE project7;
+USE levgo;
 SET NAMES utf8mb4 COLLATE utf8mb4_general_ci;
 
 INSERT INTO buildings
@@ -160,7 +160,7 @@ INSERT IGNORE INTO users (
 VALUES
   (
     '10000000-0000-4000-8000-000000000001',
-    'student@jct.ac.il',
+    'student@g.jct.ac.il',
     'Demo Student',
     NULL,
     'student',
@@ -190,7 +190,7 @@ VALUES
   ),
   (
     '10000000-0000-4000-8000-000000000004',
-    'admin@jct.ac.il',
+    'admin@g.jct.ac.il',
     'Demo Administrator',
     NULL,
     NULL,
@@ -658,33 +658,73 @@ INSERT IGNORE INTO users (
   public_id, email, display_name, phone, customer_type, role, vendor_id, password_hash
 )
 VALUES
-  ('10000000-0000-4000-8000-000000000011', 'noa.levi@jct.ac.il', 'Noa Levi', '050-555-0111', 'student', 'customer', NULL, '$2b$12$ZMy91JwXmx8jB89U/xlSWu.htkePnBpvgKF5bt.XN7LeD40eMY1nm'),
-  ('10000000-0000-4000-8000-000000000012', 'daniel.cohen@jct.ac.il', 'Daniel Cohen', '050-555-0112', 'teacher', 'customer', NULL, '$2b$12$ZMy91JwXmx8jB89U/xlSWu.htkePnBpvgKF5bt.XN7LeD40eMY1nm'),
-  ('10000000-0000-4000-8000-000000000013', 'yael.mizrahi@jct.ac.il', 'Yael Mizrahi', '050-555-0113', 'student', 'customer', NULL, '$2b$12$ZMy91JwXmx8jB89U/xlSWu.htkePnBpvgKF5bt.XN7LeD40eMY1nm'),
-  ('10000000-0000-4000-8000-000000000014', 'ariel.bendavid@jct.ac.il', 'Ariel Ben David', '050-555-0114', 'teacher', 'customer', NULL, '$2b$12$ZMy91JwXmx8jB89U/xlSWu.htkePnBpvgKF5bt.XN7LeD40eMY1nm'),
-  ('10000000-0000-4000-8000-000000000015', 'maya.azoulay@jct.ac.il', 'Maya Azoulay', '050-555-0115', 'student', 'customer', NULL, '$2b$12$ZMy91JwXmx8jB89U/xlSWu.htkePnBpvgKF5bt.XN7LeD40eMY1nm');
+  ('10000000-0000-4000-8000-000000000011', 'noa.levi@g.jct.ac.il', 'Noa Levi', '050-555-0111', 'student', 'customer', NULL, '$2b$12$ZMy91JwXmx8jB89U/xlSWu.htkePnBpvgKF5bt.XN7LeD40eMY1nm'),
+  ('10000000-0000-4000-8000-000000000012', 'daniel.cohen@g.jct.ac.il', 'Daniel Cohen', '050-555-0112', 'teacher', 'customer', NULL, '$2b$12$ZMy91JwXmx8jB89U/xlSWu.htkePnBpvgKF5bt.XN7LeD40eMY1nm'),
+  ('10000000-0000-4000-8000-000000000013', 'yael.mizrahi@g.jct.ac.il', 'Yael Mizrahi', '050-555-0113', 'student', 'customer', NULL, '$2b$12$ZMy91JwXmx8jB89U/xlSWu.htkePnBpvgKF5bt.XN7LeD40eMY1nm'),
+  ('10000000-0000-4000-8000-000000000014', 'ariel.bendavid@g.jct.ac.il', 'Ariel Ben David', '050-555-0114', 'teacher', 'customer', NULL, '$2b$12$ZMy91JwXmx8jB89U/xlSWu.htkePnBpvgKF5bt.XN7LeD40eMY1nm'),
+  ('10000000-0000-4000-8000-000000000015', 'maya.azoulay@g.jct.ac.il', 'Maya Azoulay', '050-555-0115', 'student', 'customer', NULL, '$2b$12$ZMy91JwXmx8jB89U/xlSWu.htkePnBpvgKF5bt.XN7LeD40eMY1nm');
+
+-- Demo customers receive 5,000 LevGo tokens. One token covers ILS 1 of the
+-- server-verified order value. Rerunning the seed
+-- intentionally restores the classroom accounts to their starting balance.
+UPDATE users
+SET token_balance = 5000
+WHERE role = 'customer'
+  AND public_id LIKE '10000000-0000-4000-8000-%';
+
+INSERT INTO token_transactions (
+  public_id, user_id, order_id, amount_tokens, balance_after_tokens,
+  transaction_type, note
+)
+SELECT
+  REPLACE(public_id, '10000000-', '50000000-'),
+  id,
+  NULL,
+  5000,
+  5000,
+  'seed_credit',
+  'Seeded classroom token allowance'
+FROM users
+WHERE role = 'customer'
+  AND public_id LIKE '10000000-0000-4000-8000-%'
+ON DUPLICATE KEY UPDATE
+  amount_tokens = VALUES(amount_tokens),
+  balance_after_tokens = VALUES(balance_after_tokens),
+  note = VALUES(note);
+
+-- Retire old demo orders before refreshing the completed-only order history.
+-- Real orders never use this reserved public-ID prefix.
+SET @kept_demo_order_ids = CONCAT_WS(',',
+  '20000000-0000-4000-8000-000000000003',
+  '20000000-0000-4000-8000-000000000006',
+  '20000000-0000-4000-8000-000000000009',
+  '20000000-0000-4000-8000-000000000013',
+  '20000000-0000-4000-8000-000000000016',
+  '20000000-0000-4000-8000-000000000017'
+);
+
+DELETE tracking FROM order_delivery_tracking tracking JOIN orders seeded_order ON seeded_order.id = tracking.order_id
+WHERE seeded_order.public_id LIKE '20000000-0000-4000-8000-%' AND FIND_IN_SET(seeded_order.public_id COLLATE utf8mb4_general_ci, @kept_demo_order_ids) = 0;
+DELETE item FROM order_items item JOIN orders seeded_order ON seeded_order.id = item.order_id
+WHERE seeded_order.public_id LIKE '20000000-0000-4000-8000-%' AND FIND_IN_SET(seeded_order.public_id COLLATE utf8mb4_general_ci, @kept_demo_order_ids) = 0;
+DELETE history FROM order_status_history history JOIN orders seeded_order ON seeded_order.id = history.order_id
+WHERE seeded_order.public_id LIKE '20000000-0000-4000-8000-%' AND FIND_IN_SET(seeded_order.public_id COLLATE utf8mb4_general_ci, @kept_demo_order_ids) = 0;
+DELETE payment FROM payments payment JOIN orders seeded_order ON seeded_order.id = payment.order_id
+WHERE seeded_order.public_id LIKE '20000000-0000-4000-8000-%' AND FIND_IN_SET(seeded_order.public_id COLLATE utf8mb4_general_ci, @kept_demo_order_ids) = 0;
+DELETE transaction_row FROM token_transactions transaction_row JOIN orders seeded_order ON seeded_order.id = transaction_row.order_id
+WHERE seeded_order.public_id LIKE '20000000-0000-4000-8000-%' AND FIND_IN_SET(seeded_order.public_id COLLATE utf8mb4_general_ci, @kept_demo_order_ids) = 0;
+DELETE request_row FROM cancellation_requests request_row JOIN orders seeded_order ON seeded_order.id = request_row.order_id
+WHERE seeded_order.public_id LIKE '20000000-0000-4000-8000-%' AND FIND_IN_SET(seeded_order.public_id COLLATE utf8mb4_general_ci, @kept_demo_order_ids) = 0;
+DELETE seeded_order FROM orders seeded_order
+WHERE seeded_order.public_id LIKE '20000000-0000-4000-8000-%' AND FIND_IN_SET(seeded_order.public_id COLLATE utf8mb4_general_ci, @kept_demo_order_ids) = 0;
 
 SET @seed_demo_orders = JSON_ARRAY(
-  JSON_ARRAY(1,  '20000000-0000-4000-8000-000000000001', 'DEMO-ORD-001', 'student@jct.ac.il',         'meat-cafeteria',  'pickup',   NULL,  NULL,                     'placed',           2,   0,   'MC-BURGER-01',       1, 'MC-COLA-01',         1, '410001'),
-  JSON_ARRAY(2,  '20000000-0000-4000-8000-000000000002', 'DEMO-ORD-002', 'student@jct.ac.il',         'dairy-cafeteria', 'delivery', '47',  'Room 204',               'preparing',        5,   800, 'DC-PASTA-01',        1, 'DC-ICEDCOFFEE-01',   1, '410002'),
-  JSON_ARRAY(3,  '20000000-0000-4000-8000-000000000003', 'DEMO-ORD-003', 'student@jct.ac.il',         'office-supplies', 'delivery', '36',  'Nursing office, floor 2', 'completed',        72,   800, 'OS-NOTE-01',         2, 'OS-PEN-01',          1, '410003'),
-  JSON_ARRAY(4,  '20000000-0000-4000-8000-000000000004', 'DEMO-ORD-004', 'noa.levi@jct.ac.il',        'meat-cafeteria',  'delivery', '45',  'Dorm B, room 118',        'out_for_delivery', 8,   900, 'MC-SHAWARMA-01',     1, 'MC-FRIES-01',        1, '410004'),
-  JSON_ARRAY(5,  '20000000-0000-4000-8000-000000000005', 'DEMO-ORD-005', 'daniel.cohen@jct.ac.il',    'dairy-cafeteria', 'pickup',   NULL,  NULL,                     'ready',            10,   0,   'DC-TOAST-01',        2, 'DC-COFFEE-01',       2, '410005'),
-  JSON_ARRAY(6,  '20000000-0000-4000-8000-000000000006', 'DEMO-ORD-006', 'yael.mizrahi@jct.ac.il',    'meat-cafeteria',  'pickup',   NULL,  NULL,                     'completed',        96,   0,   'MC-GRILL-01',        1, 'MC-SIDE-SALAD-01',   1, '410006'),
-  JSON_ARRAY(7,  '20000000-0000-4000-8000-000000000007', 'DEMO-ORD-007', 'ariel.bendavid@jct.ac.il',  'office-supplies', 'delivery', '24',  'Faculty office 310',      'needs_attention',  13,   800, 'OS-USB-01',          1, 'OS-PAPER-01',        1, '410007'),
-  JSON_ARRAY(8,  '20000000-0000-4000-8000-000000000008', 'DEMO-ORD-008', 'maya.azoulay@jct.ac.il',     'dairy-cafeteria', 'pickup',   NULL,  NULL,                     'placed',           15,   0,   'DC-PIZZA-01',        1, 'DC-CHOCOLATE-01',    1, '410008'),
-  JSON_ARRAY(9,  '20000000-0000-4000-8000-000000000009', 'DEMO-ORD-009', 'student@jct.ac.il',         'meat-cafeteria',  'delivery', '47',  'Room 315',               'completed',       120,   900, 'MC-KEBAB-01',        1, 'MC-WATER-01',        2, '410009'),
-  JSON_ARRAY(10, '20000000-0000-4000-8000-000000000010', 'DEMO-ORD-010', 'noa.levi@jct.ac.il',        'meat-cafeteria',  'pickup',   NULL,  NULL,                     'preparing',        18,   0,   'MC-SCHNITZEL-01',    1, 'MC-ORANGE-01',       1, '410010'),
-  JSON_ARRAY(11, '20000000-0000-4000-8000-000000000011', 'DEMO-ORD-011', 'daniel.cohen@jct.ac.il',    'meat-cafeteria',  'pickup',   NULL,  NULL,                     'ready',            20,   0,   'MC-TURKEY-01',       2, 'MC-BLACKCOFFEE-01',  2, '410011'),
-  JSON_ARRAY(12, '20000000-0000-4000-8000-000000000012', 'DEMO-ORD-012', 'yael.mizrahi@jct.ac.il',    'meat-cafeteria',  'delivery', '43',  'Laundry lobby',           'placed',           22,   900, 'MC-FALAFEL-01',      1, 'MC-ICEDTEA-01',      1, '410012'),
-  JSON_ARRAY(13, '20000000-0000-4000-8000-000000000013', 'DEMO-ORD-013', 'ariel.bendavid@jct.ac.il',  'meat-cafeteria',  'pickup',   NULL,  NULL,                     'completed',       144,   0,   'MC-HUMMUS-01',       1, 'MC-RINGS-01',        1, '410013'),
-  JSON_ARRAY(14, '20000000-0000-4000-8000-000000000014', 'DEMO-ORD-014', 'maya.azoulay@jct.ac.il',     'meat-cafeteria',  'pickup',   NULL,  NULL,                     'cancelled',        30,   0,   'MC-MEATBALL-01',     1, 'MC-COLA-01',         1, '410014'),
-  JSON_ARRAY(15, '20000000-0000-4000-8000-000000000015', 'DEMO-ORD-015', 'noa.levi@jct.ac.il',        'meat-cafeteria',  'delivery', '41A', 'Student club entrance',  'out_for_delivery', 25,   900, 'MC-ROAST-01',        1, 'MC-FRIES-01',        2, '410015'),
-  JSON_ARRAY(16, '20000000-0000-4000-8000-000000000016', 'DEMO-ORD-016', 'daniel.cohen@jct.ac.il',    'dairy-cafeteria', 'pickup',   NULL,  NULL,                     'completed',       168,   0,   'DC-SHAKSHUKA-01',    1, 'DC-HERBALTEA-01',    1, '410016'),
-  JSON_ARRAY(17, '20000000-0000-4000-8000-000000000017', 'DEMO-ORD-017', 'student@jct.ac.il',         'dairy-cafeteria', 'pickup',   NULL,  NULL,                     'completed',       192,   0,   'DC-SALAD-01',        1, 'DC-FRUIT-01',        1, '410017'),
-  JSON_ARRAY(18, '20000000-0000-4000-8000-000000000018', 'DEMO-ORD-018', 'student@jct.ac.il',         'office-supplies', 'pickup',   NULL,  NULL,                     'placed',           28,   0,   'OS-HIGHLIGHT-01',    1, 'OS-PEN-01',          1, '410018'),
-  JSON_ARRAY(19, '20000000-0000-4000-8000-000000000019', 'DEMO-ORD-019', 'maya.azoulay@jct.ac.il',     'meat-cafeteria',  'pickup',   NULL,  NULL,                     'preparing',        32,   0,   'MC-STIRFRY-01',      1, 'MC-WATER-01',        1, '410019'),
-  JSON_ARRAY(20, '20000000-0000-4000-8000-000000000020', 'DEMO-ORD-020', 'student@jct.ac.il',         'meat-cafeteria',  'pickup',   NULL,  NULL,                     'ready',            36,   0,   'MC-SOUP-01',         1, 'MC-SIDE-SALAD-01',   1, '410020')
+  JSON_ARRAY(3,  '20000000-0000-4000-8000-000000000003', 'DEMO-ORD-003', 'student@g.jct.ac.il',         'office-supplies', 'delivery', '36',  'Nursing office, floor 2', 'completed',        72,   800, 'OS-NOTE-01',         2, 'OS-PEN-01',          1, '410003'),
+  JSON_ARRAY(6,  '20000000-0000-4000-8000-000000000006', 'DEMO-ORD-006', 'yael.mizrahi@g.jct.ac.il',    'meat-cafeteria',  'pickup',   NULL,  NULL,                     'completed',        96,   0,   'MC-GRILL-01',        1, 'MC-SIDE-SALAD-01',   1, '410006'),
+  JSON_ARRAY(9,  '20000000-0000-4000-8000-000000000009', 'DEMO-ORD-009', 'student@g.jct.ac.il',         'meat-cafeteria',  'delivery', '47',  'Room 315',               'completed',       120,   900, 'MC-KEBAB-01',        1, 'MC-WATER-01',        2, '410009'),
+  JSON_ARRAY(13, '20000000-0000-4000-8000-000000000013', 'DEMO-ORD-013', 'ariel.bendavid@g.jct.ac.il',  'meat-cafeteria',  'pickup',   NULL,  NULL,                     'completed',       144,   0,   'MC-HUMMUS-01',       1, 'MC-RINGS-01',        1, '410013'),
+  JSON_ARRAY(16, '20000000-0000-4000-8000-000000000016', 'DEMO-ORD-016', 'daniel.cohen@g.jct.ac.il',    'dairy-cafeteria', 'pickup',   NULL,  NULL,                     'completed',       168,   0,   'DC-SHAKSHUKA-01',    1, 'DC-HERBALTEA-01',    1, '410016'),
+  JSON_ARRAY(17, '20000000-0000-4000-8000-000000000017', 'DEMO-ORD-017', 'student@g.jct.ac.il',         'dairy-cafeteria', 'pickup',   NULL,  NULL,                     'completed',       192,   0,   'DC-SALAD-01',        1, 'DC-FRUIT-01',        1, '410017')
 );
 
 INSERT INTO orders (
@@ -750,6 +790,31 @@ ON DUPLICATE KEY UPDATE
   pickup_code = VALUES(pickup_code), completed_at = VALUES(completed_at),
   cancelled_at = VALUES(cancelled_at), created_at = VALUES(created_at),
   updated_at = VALUES(updated_at);
+
+-- Active demo deliveries get a fresh, persisted 30-60 second journey every
+-- time the classroom seed is refreshed.
+INSERT INTO order_delivery_tracking (
+  order_id, provider, provider_reference, status, started_at, eta_at, arrived_at
+)
+SELECT
+  seeded_order.id,
+  'demo',
+  NULL,
+  'in_transit',
+  UTC_TIMESTAMP(3),
+  DATE_ADD(UTC_TIMESTAMP(3), INTERVAL (30 + FLOOR(RAND() * 31)) SECOND),
+  NULL
+FROM orders seeded_order
+WHERE seeded_order.public_id LIKE '20000000-0000-4000-8000-%'
+  AND seeded_order.fulfillment_type = 'delivery'
+  AND seeded_order.status = 'out_for_delivery'
+ON DUPLICATE KEY UPDATE
+  provider = VALUES(provider),
+  provider_reference = NULL,
+  status = 'in_transit',
+  started_at = VALUES(started_at),
+  eta_at = VALUES(eta_at),
+  arrived_at = NULL;
 
 DELETE FROM order_items
 WHERE order_id IN (
@@ -849,9 +914,17 @@ JOIN users manager ON manager.vendor_id = seeded_order.vendor_id
 WHERE seeded_order.public_id LIKE '20000000-0000-4000-8000-%'
   AND seeded_order.status IN ('ready', 'out_for_delivery', 'completed')
 UNION ALL
+SELECT seeded_order.id, NULL, 'out_for_delivery', 'arrived',
+  'Demo delivery arrived at the pickup point',
+  DATE_ADD(seeded_order.created_at, INTERVAL 130 MINUTE)
+FROM orders seeded_order
+WHERE seeded_order.public_id LIKE '20000000-0000-4000-8000-%'
+  AND seeded_order.fulfillment_type = 'delivery'
+  AND seeded_order.status = 'completed'
+UNION ALL
 SELECT seeded_order.id, seeded_order.user_id,
   CASE WHEN seeded_order.fulfillment_type = 'delivery'
-    THEN 'out_for_delivery' ELSE 'ready' END,
+    THEN 'arrived' ELSE 'ready' END,
   'completed', 'Customer confirmed receipt',
   DATE_ADD(seeded_order.created_at, INTERVAL 140 MINUTE)
 FROM orders seeded_order
@@ -890,18 +963,18 @@ ON DUPLICATE KEY UPDATE
   is_active = TRUE;
 
 SET @seed_demo_print_jobs = JSON_ARRAY(
-  JSON_ARRAY(1,  '30000000-0000-4000-8000-000000000001', 'DEMO-PRN-001', 'student@jct.ac.il',        'A4', 'black_white', 'double', 1, FALSE, FALSE, FALSE, 24, 'Algorithms lecture notes',         'submitted',       1,   '510001'),
-  JSON_ARRAY(2,  '30000000-0000-4000-8000-000000000002', 'DEMO-PRN-002', 'student@jct.ac.il',        'A4', 'color',       'single', 2, TRUE,  FALSE, TRUE,  8,  'Two bound project copies',         'printing',        4,   '510002'),
-  JSON_ARRAY(3,  '30000000-0000-4000-8000-000000000003', 'DEMO-PRN-003', 'student@jct.ac.il',        'A4', 'black_white', 'double', 1, FALSE, FALSE, FALSE, 60, 'Exam preparation booklet',         'ready',           8,   '510003'),
-  JSON_ARRAY(4,  '30000000-0000-4000-8000-000000000004', 'DEMO-PRN-004', 'noa.levi@jct.ac.il',       'A4', 'color',       'single', 1, FALSE, TRUE,  FALSE, 4,  'Laminate all presentation sheets', 'completed',       72,  '510004'),
-  JSON_ARRAY(5,  '30000000-0000-4000-8000-000000000005', 'DEMO-PRN-005', 'daniel.cohen@jct.ac.il',   'A3', 'color',       'single', 3, FALSE, FALSE, FALSE, 2,  'Posters for the laboratory',       'needs_attention', 12,  '510005'),
-  JSON_ARRAY(6,  '30000000-0000-4000-8000-000000000006', 'DEMO-PRN-006', 'yael.mizrahi@jct.ac.il',   'A4', 'black_white', 'single', 2, TRUE,  FALSE, TRUE,  35, 'Course reader',                    'printing',        18,  '510006'),
-  JSON_ARRAY(7,  '30000000-0000-4000-8000-000000000007', 'DEMO-PRN-007', 'ariel.bendavid@jct.ac.il', 'A4', 'color',       'double', 1, FALSE, FALSE, TRUE,  16, 'Faculty workshop handout',         'ready',           26,  '510007'),
-  JSON_ARRAY(8,  '30000000-0000-4000-8000-000000000008', 'DEMO-PRN-008', 'maya.azoulay@jct.ac.il',    'A4', 'black_white', 'double', 4, TRUE,  FALSE, FALSE, 10, 'Study group copies',               'completed',       96,  '510008'),
-  JSON_ARRAY(9,  '30000000-0000-4000-8000-000000000009', 'DEMO-PRN-009', 'student@jct.ac.il',        'A4', 'color',       'single', 1, FALSE, TRUE,  FALSE, 6,  'Design portfolio pages',            'completed',       120, '510009'),
-  JSON_ARRAY(10, '30000000-0000-4000-8000-000000000010', 'DEMO-PRN-010', 'student@jct.ac.il',        'A4', 'black_white', 'double', 2, FALSE, FALSE, TRUE,  80, 'Database course summary',          'completed',       144, '510010'),
-  JSON_ARRAY(11, '30000000-0000-4000-8000-000000000011', 'DEMO-PRN-011', 'student@jct.ac.il',        'A4', 'color',       'double', 1, TRUE,  FALSE, FALSE, 18, 'Full-stack project documentation',  'ready',           30,  '510011'),
-  JSON_ARRAY(12, '30000000-0000-4000-8000-000000000012', 'DEMO-PRN-012', 'student@jct.ac.il',        'A4', 'black_white', 'single', 1, FALSE, FALSE, FALSE, 12, 'Discrete mathematics exercise',     'rejected',        40,  '510012')
+  JSON_ARRAY(1,  '30000000-0000-4000-8000-000000000001', 'DEMO-PRN-001', 'student@g.jct.ac.il',        'A4', 'black_white', 'double', 1, FALSE, FALSE, FALSE, 24, 'Algorithms lecture notes',         'submitted',       1,   '510001'),
+  JSON_ARRAY(2,  '30000000-0000-4000-8000-000000000002', 'DEMO-PRN-002', 'student@g.jct.ac.il',        'A4', 'color',       'single', 2, TRUE,  FALSE, TRUE,  8,  'Two bound project copies',         'printing',        4,   '510002'),
+  JSON_ARRAY(3,  '30000000-0000-4000-8000-000000000003', 'DEMO-PRN-003', 'student@g.jct.ac.il',        'A4', 'black_white', 'double', 1, FALSE, FALSE, FALSE, 60, 'Exam preparation booklet',         'ready',           8,   '510003'),
+  JSON_ARRAY(4,  '30000000-0000-4000-8000-000000000004', 'DEMO-PRN-004', 'noa.levi@g.jct.ac.il',       'A4', 'color',       'single', 1, FALSE, TRUE,  FALSE, 4,  'Laminate all presentation sheets', 'completed',       72,  '510004'),
+  JSON_ARRAY(5,  '30000000-0000-4000-8000-000000000005', 'DEMO-PRN-005', 'daniel.cohen@g.jct.ac.il',   'A3', 'color',       'single', 3, FALSE, FALSE, FALSE, 2,  'Posters for the laboratory',       'needs_attention', 12,  '510005'),
+  JSON_ARRAY(6,  '30000000-0000-4000-8000-000000000006', 'DEMO-PRN-006', 'yael.mizrahi@g.jct.ac.il',   'A4', 'black_white', 'single', 2, TRUE,  FALSE, TRUE,  35, 'Course reader',                    'printing',        18,  '510006'),
+  JSON_ARRAY(7,  '30000000-0000-4000-8000-000000000007', 'DEMO-PRN-007', 'ariel.bendavid@g.jct.ac.il', 'A4', 'color',       'double', 1, FALSE, FALSE, TRUE,  16, 'Faculty workshop handout',         'ready',           26,  '510007'),
+  JSON_ARRAY(8,  '30000000-0000-4000-8000-000000000008', 'DEMO-PRN-008', 'maya.azoulay@g.jct.ac.il',    'A4', 'black_white', 'double', 4, TRUE,  FALSE, FALSE, 10, 'Study group copies',               'completed',       96,  '510008'),
+  JSON_ARRAY(9,  '30000000-0000-4000-8000-000000000009', 'DEMO-PRN-009', 'student@g.jct.ac.il',        'A4', 'color',       'single', 1, FALSE, TRUE,  FALSE, 6,  'Design portfolio pages',            'completed',       120, '510009'),
+  JSON_ARRAY(10, '30000000-0000-4000-8000-000000000010', 'DEMO-PRN-010', 'student@g.jct.ac.il',        'A4', 'black_white', 'double', 2, FALSE, FALSE, TRUE,  80, 'Database course summary',          'completed',       144, '510010'),
+  JSON_ARRAY(11, '30000000-0000-4000-8000-000000000011', 'DEMO-PRN-011', 'student@g.jct.ac.il',        'A4', 'color',       'double', 1, TRUE,  FALSE, FALSE, 18, 'Full-stack project documentation',  'ready',           30,  '510011'),
+  JSON_ARRAY(12, '30000000-0000-4000-8000-000000000012', 'DEMO-PRN-012', 'student@g.jct.ac.il',        'A4', 'black_white', 'single', 1, FALSE, FALSE, FALSE, 12, 'Discrete mathematics exercise',     'rejected',        40,  '510012')
 );
 
 INSERT INTO print_jobs (
@@ -1059,20 +1132,20 @@ WHERE seeded_job.public_id LIKE '30000000-0000-4000-8000-%'
   AND seeded_job.status = 'rejected';
 
 SET @seed_demo_tickets = JSON_ARRAY(
-  JSON_ARRAY(1,  '40000000-0000-4000-8000-000000000001', 'DEMO-MNT-001', 'student@jct.ac.il',        '47',  'Room 204',               'electrical',       'Power outlet is sparking',          'The outlet beside the lecturer desk sparked when a charger was connected.', 'urgent', 'urgent', 'open',             2),
-  JSON_ARRAY(2,  '40000000-0000-4000-8000-000000000002', 'DEMO-MNT-002', 'student@jct.ac.il',        '24',  'Third-floor study area',  'it_equipment',     'Wi-Fi disconnects repeatedly',      'The campus network disconnects every few minutes in the east study area.',   'normal', 'normal', 'in_progress',      6),
-  JSON_ARRAY(3,  '40000000-0000-4000-8000-000000000003', 'DEMO-MNT-003', 'student@jct.ac.il',        '12',  'Cafeteria handwash area', 'plumbing',         'Sink is leaking',                   'Water is leaking below the left sink and making the floor slippery.',        'urgent', 'urgent', 'acknowledged',     9),
-  JSON_ARRAY(4,  '40000000-0000-4000-8000-000000000004', 'DEMO-MNT-004', 'student@jct.ac.il',        '36',  'Second-floor restroom',   'missing_supplies', 'Paper towels are empty',            'Both paper towel dispensers were empty during the morning.',                 'low',    'low',    'resolved',         28),
-  JSON_ARRAY(5,  '40000000-0000-4000-8000-000000000005', 'DEMO-MNT-005', 'student@jct.ac.il',        '26',  'Laboratory 312',          'furniture',        'Broken laboratory chair',           'The backrest is loose and the chair should not be used until repaired.',     'normal', 'normal', 'waiting_for_user', 15),
-  JSON_ARRAY(6,  '40000000-0000-4000-8000-000000000006', 'DEMO-MNT-006', 'student@jct.ac.il',        '22',  'Ground-floor corridor',   'cleaning',         'Drink spilled near entrance',       'A sticky drink spill is making the entrance corridor slippery.',            'urgent', 'urgent', 'closed',           48),
-  JSON_ARRAY(7,  '40000000-0000-4000-8000-000000000007', 'DEMO-MNT-007', 'student@jct.ac.il',        '13',  'West stairwell',          'electrical',       'Stairwell light is off',            'Two lights in the west stairwell are not working after sunset.',            'normal', 'normal', 'open',             19),
-  JSON_ARRAY(8,  '40000000-0000-4000-8000-000000000008', 'DEMO-MNT-008', 'noa.levi@jct.ac.il',       '45',  'Dorm B, third floor',     'plumbing',         'Low water pressure in shower',      'The third-floor showers have had very low pressure since yesterday.',       'normal', 'normal', 'in_progress',      22),
-  JSON_ARRAY(9,  '40000000-0000-4000-8000-000000000009', 'DEMO-MNT-009', 'daniel.cohen@jct.ac.il',   '36',  'Classroom 105',           'it_equipment',     'Projector does not detect HDMI',    'The projector powers on but does not detect either classroom HDMI cable.',  'normal', 'normal', 'resolved',         54),
-  JSON_ARRAY(10, '40000000-0000-4000-8000-000000000010', 'DEMO-MNT-010', 'yael.mizrahi@jct.ac.il',   '41A', 'Student club exit',       'safety',           'Emergency exit sign is loose',      'The illuminated exit sign is hanging from one side above the rear door.',   'urgent', 'urgent', 'open',             4),
-  JSON_ARRAY(11, '40000000-0000-4000-8000-000000000011', 'DEMO-MNT-011', 'ariel.bendavid@jct.ac.il', '24',  'Faculty office 310',      'furniture',        'Additional desk requested',         'A temporary desk was requested for a visiting lecturer.',                   'low',    'low',    'rejected',         70),
-  JSON_ARRAY(12, '40000000-0000-4000-8000-000000000012', 'DEMO-MNT-012', 'maya.azoulay@jct.ac.il',    '43',  'Laundry room',            'cleaning',         'Lint bins need emptying',           'Both lint collection bins are full and blocking access to the dryers.',     'normal', 'normal', 'acknowledged',     12),
-  JSON_ARRAY(13, '40000000-0000-4000-8000-000000000013', 'DEMO-MNT-013', 'student@jct.ac.il',        '47',  'Room 315',                'other',            'Air conditioner makes loud noise', 'The air conditioner vibrates loudly whenever cooling mode starts.',         'normal', 'normal', 'open',             7),
-  JSON_ARRAY(14, '40000000-0000-4000-8000-000000000014', 'DEMO-MNT-014', 'student@jct.ac.il',        '12',  'Dairy cafeteria seating', 'missing_supplies', 'Reusable cutlery station is empty', 'The reusable cutlery station has been empty since the lunch break.',        'low',    'low',    'resolved',         36)
+  JSON_ARRAY(1,  '40000000-0000-4000-8000-000000000001', 'DEMO-MNT-001', 'student@g.jct.ac.il',        '47',  'Room 204',               'electrical',       'Power outlet is sparking',          'The outlet beside the lecturer desk sparked when a charger was connected.', 'urgent', 'urgent', 'open',             2),
+  JSON_ARRAY(2,  '40000000-0000-4000-8000-000000000002', 'DEMO-MNT-002', 'student@g.jct.ac.il',        '24',  'Third-floor study area',  'it_equipment',     'Wi-Fi disconnects repeatedly',      'The campus network disconnects every few minutes in the east study area.',   'normal', 'normal', 'in_progress',      6),
+  JSON_ARRAY(3,  '40000000-0000-4000-8000-000000000003', 'DEMO-MNT-003', 'student@g.jct.ac.il',        '12',  'Cafeteria handwash area', 'plumbing',         'Sink is leaking',                   'Water is leaking below the left sink and making the floor slippery.',        'urgent', 'urgent', 'acknowledged',     9),
+  JSON_ARRAY(4,  '40000000-0000-4000-8000-000000000004', 'DEMO-MNT-004', 'student@g.jct.ac.il',        '36',  'Second-floor restroom',   'missing_supplies', 'Paper towels are empty',            'Both paper towel dispensers were empty during the morning.',                 'low',    'low',    'resolved',         28),
+  JSON_ARRAY(5,  '40000000-0000-4000-8000-000000000005', 'DEMO-MNT-005', 'student@g.jct.ac.il',        '26',  'Laboratory 312',          'furniture',        'Broken laboratory chair',           'The backrest is loose and the chair should not be used until repaired.',     'normal', 'normal', 'waiting_for_user', 15),
+  JSON_ARRAY(6,  '40000000-0000-4000-8000-000000000006', 'DEMO-MNT-006', 'student@g.jct.ac.il',        '22',  'Ground-floor corridor',   'cleaning',         'Drink spilled near entrance',       'A sticky drink spill is making the entrance corridor slippery.',            'urgent', 'urgent', 'closed',           48),
+  JSON_ARRAY(7,  '40000000-0000-4000-8000-000000000007', 'DEMO-MNT-007', 'student@g.jct.ac.il',        '13',  'West stairwell',          'electrical',       'Stairwell light is off',            'Two lights in the west stairwell are not working after sunset.',            'normal', 'normal', 'open',             19),
+  JSON_ARRAY(8,  '40000000-0000-4000-8000-000000000008', 'DEMO-MNT-008', 'noa.levi@g.jct.ac.il',       '45',  'Dorm B, third floor',     'plumbing',         'Low water pressure in shower',      'The third-floor showers have had very low pressure since yesterday.',       'normal', 'normal', 'in_progress',      22),
+  JSON_ARRAY(9,  '40000000-0000-4000-8000-000000000009', 'DEMO-MNT-009', 'daniel.cohen@g.jct.ac.il',   '36',  'Classroom 105',           'it_equipment',     'Projector does not detect HDMI',    'The projector powers on but does not detect either classroom HDMI cable.',  'normal', 'normal', 'resolved',         54),
+  JSON_ARRAY(10, '40000000-0000-4000-8000-000000000010', 'DEMO-MNT-010', 'yael.mizrahi@g.jct.ac.il',   '41A', 'Student club exit',       'safety',           'Emergency exit sign is loose',      'The illuminated exit sign is hanging from one side above the rear door.',   'urgent', 'urgent', 'open',             4),
+  JSON_ARRAY(11, '40000000-0000-4000-8000-000000000011', 'DEMO-MNT-011', 'ariel.bendavid@g.jct.ac.il', '24',  'Faculty office 310',      'furniture',        'Additional desk requested',         'A temporary desk was requested for a visiting lecturer.',                   'low',    'low',    'rejected',         70),
+  JSON_ARRAY(12, '40000000-0000-4000-8000-000000000012', 'DEMO-MNT-012', 'maya.azoulay@g.jct.ac.il',    '43',  'Laundry room',            'cleaning',         'Lint bins need emptying',           'Both lint collection bins are full and blocking access to the dryers.',     'normal', 'normal', 'acknowledged',     12),
+  JSON_ARRAY(13, '40000000-0000-4000-8000-000000000013', 'DEMO-MNT-013', 'student@g.jct.ac.il',        '47',  'Room 315',                'other',            'Air conditioner makes loud noise', 'The air conditioner vibrates loudly whenever cooling mode starts.',         'normal', 'normal', 'open',             7),
+  JSON_ARRAY(14, '40000000-0000-4000-8000-000000000014', 'DEMO-MNT-014', 'student@g.jct.ac.il',        '12',  'Dairy cafeteria seating', 'missing_supplies', 'Reusable cutlery station is empty', 'The reusable cutlery station has been empty since the lunch break.',        'low',    'low',    'resolved',         36)
 );
 
 INSERT INTO maintenance_tickets (
@@ -1109,7 +1182,7 @@ FROM JSON_TABLE(@seed_demo_tickets, '$[*]' COLUMNS(
   hours_ago INT PATH '$[12]'
 )) spec
 JOIN users customer ON customer.email = spec.customer_email COLLATE utf8mb4_general_ci
-JOIN users administrator ON administrator.email = 'admin@jct.ac.il'
+JOIN users administrator ON administrator.email = 'admin@g.jct.ac.il'
 JOIN buildings building ON building.campus_code = spec.building_code COLLATE utf8mb4_general_ci
 ON DUPLICATE KEY UPDATE
   reporter_user_id = VALUES(reporter_user_id),

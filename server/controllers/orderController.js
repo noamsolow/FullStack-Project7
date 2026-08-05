@@ -8,6 +8,10 @@ export async function checkoutHandler(request, response) {
   });
 }
 
+export async function checkoutOptionsHandler(request, response) {
+  response.json({ data: await orders.checkoutOptions(request.user) });
+}
+
 export async function captureHandler(request, response) {
   response.json({
     data: await orders.captureOrderPayment(
@@ -21,6 +25,10 @@ export async function captureHandler(request, response) {
 
 export async function listHandler(request, response) {
   response.json(await orders.customerOrders(request.user, request.query));
+}
+
+export async function progressHandler(request, response) {
+  response.json(await orders.customerProgress(request.user, request.query));
 }
 
 export async function detailsHandler(request, response) {

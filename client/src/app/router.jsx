@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 import { AdminLayout } from "../layouts/AdminLayout.jsx";
 import { PartnerLayout } from "../layouts/PartnerLayout.jsx";
 import { PublicLayout } from "../layouts/PublicLayout.jsx";
@@ -10,9 +10,9 @@ import { AdminOrdersPage } from "../pages/admin/AdminOrdersPage.jsx";
 import { AdminUsersPage } from "../pages/admin/AdminUsersPage.jsx";
 import { AdminVendorsPage } from "../pages/admin/AdminVendorsPage.jsx";
 import { AuthPage } from "../pages/auth/AuthPage.jsx";
-import { DiscoverPage } from "../pages/commerce/catalog/DiscoverPage.jsx";
 import { VendorPage } from "../pages/commerce/catalog/VendorPage.jsx";
 import { CartPage } from "../pages/commerce/checkout/CartPage.jsx";
+import { PaymentReturnPage } from "../pages/commerce/checkout/PaymentReturnPage.jsx";
 import { OrderDetailPage } from "../pages/commerce/orders/OrderDetailPage.jsx";
 import { OrdersPage } from "../pages/commerce/orders/OrdersPage.jsx";
 import { RecommendationPage } from "../pages/commerce/recommendations/RecommendationPage.jsx";
@@ -39,10 +39,12 @@ export const router = createBrowserRouter([
     children: [
       { path: "/", element: <HomePage /> },
       { path: "/services", element: customer(<ServicesPage />) },
-      { path: "/eat", element: <DiscoverPage group="eat" /> },
-      { path: "/shop", element: <DiscoverPage group="shop" /> },
+      { path: "/eat", element: <Navigate to="/services#food" replace /> },
+      { path: "/shop", element: <Navigate to="/services#office" replace /> },
       { path: "/vendors/:slug", element: <VendorPage /> },
-      { path: "/cart", element: <CartPage /> },
+      { path: "/cart", element: customer(<CartPage />) },
+      { path: "/payment/return", element: customer(<PaymentReturnPage />) },
+      { path: "/payment/cancel", element: customer(<PaymentReturnPage cancelled />) },
       { path: "/recommend", element: customer(<RecommendationPage />) },
       { path: "/print", element: customer(<PrintPage />) },
       { path: "/print/jobs", element: customer(<PrintJobsPage />) },

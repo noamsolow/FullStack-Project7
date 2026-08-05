@@ -16,26 +16,32 @@ export function useLoadMoreResource(loader, { pageSize = 6, getKey = keyFor } = 
   const currentPage = useRef(0);
   const activeRequest = useRef(null);
 
-  const requestPage = useCallback(async (page, replace, requestGeneration) => {
+  const requestPage = useCallback(async (page, replace, requestGeneration, silent = false) => {
     const requestKey = `${requestGeneration}:${page}`;
     if (activeRequest.current === requestKey) return null;
     activeRequest.current = requestKey;
-    setState((current) => ({
-      ...current,
-      loading: replace,
-      loadingMore: !replace,
-      error: null,
-    }));
+    setState((current) => silent
+      ? { ...current, error: null }
+      : {
+        ...current,
+        loading: replace,
+        loadingMore: !replace,
+        error: null,
+      });
 
     try {
       const result = await loader({ page, limit: pageSize });
       if (generation.current !== requestGeneration) return null;
 
-      currentPage.current = result.meta?.page ?? page;
+      if (!silent) currentPage.current = result.meta?.page ?? page;
       setState((current) => {
         const incoming = result.data ?? [];
         const items = replace
-          ? incoming
+          ? silent
+            ? [...incoming, ...current.items].filter((item, index, all) => (
+              all.findIndex((candidate) => getKey(candidate) === getKey(item)) === index
+            ))
+            : incoming
           : [...current.items, ...incoming].filter((item, index, all) => (
             all.findIndex((candidate) => getKey(candidate) === getKey(item)) === index
           ));
@@ -77,6 +83,13 @@ export function useLoadMoreResource(loader, { pageSize = 6, getKey = keyFor } = 
     return requestPage(currentPage.current + 1, false, generation.current);
   }, [requestPage, state.loading, state.loadingMore, state.meta.hasMore]);
 
+  const refresh = useCallback(() => {
+    generation.current += 1;
+    const requestGeneration = generation.current;
+    activeRequest.current = null;
+    return requestPage(1, true, requestGeneration, true);
+  }, [requestPage]);
+
   useEffect(() => {
     reload();
     return () => {
@@ -85,5 +98,5 @@ export function useLoadMoreResource(loader, { pageSize = 6, getKey = keyFor } = 
     };
   }, [reload]);
 
-  return { ...state, loadMore, reload };
+  return { ...state, loadMore, reload, refresh };
 }

@@ -60,7 +60,7 @@ export function VendorPage() {
     <div className="vendor-page">
       <section className="vendor-hero">
         <div className="page-container vendor-hero__content">
-          <Link to={current.vendor_type === "campus_shop" ? "/shop" : "/eat"} className="back-link">
+          <Link to={current.vendor_type === "campus_shop" ? "/services#office" : "/services#food"} className="back-link">
             ← Back to discovery
           </Link>
           <span className="eyebrow">{titleCase(current.vendor_type)}</span>

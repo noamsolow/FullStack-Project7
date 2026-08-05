@@ -3,11 +3,13 @@ import { ShoppingAssistant } from "../components/assistant/ShoppingAssistant.jsx
 import { AppHeader } from "../components/navigation/AppHeader.jsx";
 import { MobileNav } from "../components/navigation/MobileNav.jsx";
 import { LevGoLogo } from "../components/brand/LevGoLogo.jsx";
+import { CustomerOrderProgress } from "../components/orders/CustomerOrderProgress.jsx";
 
 export function PublicLayout() {
   return (
     <div className="site-shell">
       <AppHeader />
+      <CustomerOrderProgress />
       <main id="main-content">
         <Outlet />
       </main>

@@ -26,6 +26,7 @@ function safeUser(user, membership = null) {
     phone: user.phone,
     customerType: user.customer_type,
     role: user.role,
+    tokenBalance: Number(user.token_balance ?? 0),
     vendor: membership
       ? {
         publicId: membership.vendor_public_id,
