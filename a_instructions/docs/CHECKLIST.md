@@ -24,8 +24,8 @@
 ## Requires external sandboxes
 
 - [ ] Print jobs cannot confirm before an unexpired quote.
-- [ ] OpenAI output references only the candidate product set.
-- [ ] Missing OpenAI key displays deterministic fallback.
+- [ ] Gemini output references only the candidate product set.
+- [ ] Missing Gemini key displays deterministic fallback.
 
 ## Files and UI
 

@@ -16,7 +16,9 @@ import {
 } from "../validation/adminSchemas.js";
 import {
   adminMaintenanceQuerySchema,
+  maintenanceActivityQuerySchema,
   maintenanceCommentSchema,
+  maintenanceRouteQuerySchema,
   maintenanceUpdateSchema,
 } from "../validation/maintenanceSchemas.js";
 
@@ -80,12 +82,25 @@ adminRouter.get(
 );
 adminRouter.get(
   "/maintenance-route",
+  validate(maintenanceRouteQuerySchema, "query"),
   asyncHandler(controller.maintenanceRouteHandler),
 );
 adminRouter.get(
   "/maintenance-tickets/:publicId",
   validate(publicIdParam, "params"),
   asyncHandler(controller.maintenanceDetailsHandler),
+);
+adminRouter.get(
+  "/maintenance-tickets/:publicId/comments",
+  validate(publicIdParam, "params"),
+  validate(maintenanceActivityQuerySchema, "query"),
+  asyncHandler(controller.maintenanceCommentsHandler),
+);
+adminRouter.get(
+  "/maintenance-tickets/:publicId/history",
+  validate(publicIdParam, "params"),
+  validate(maintenanceActivityQuerySchema, "query"),
+  asyncHandler(controller.maintenanceHistoryHandler),
 );
 adminRouter.patch(
   "/maintenance-tickets/:publicId",

@@ -39,7 +39,11 @@ export function MaintenanceRoutePlan({ onManageTicket }) {
 }
 
 function RequestedMaintenanceRoute({ onClose, onManageTicket }) {
-  const load = useCallback(() => adminService.maintenanceRoute(), []);
+  const [page, setPage] = useState(1);
+  const load = useCallback(
+    () => adminService.maintenanceRoute({ page, limit: 50 }),
+    [page],
+  );
   const { data, loading, error, reload } = useApiResource(load);
   const route = data?.data;
 
@@ -71,12 +75,35 @@ function RequestedMaintenanceRoute({ onClose, onManageTicket }) {
       {route && route.ticketCount === 0 && (
         <EmptyState
           icon="check"
-          title="No active route needed"
-          message="There are no open, acknowledged, or in-progress maintenance tickets."
+          title={route.hasPrevious ? "No more route tasks" : "No active route needed"}
+          message={route.hasPrevious
+            ? "Return to the previous batch of active maintenance work."
+            : "There are no open, acknowledged, or in-progress maintenance tickets."}
         />
       )}
       {route && route.ticketCount > 0 && (
         <RouteResult route={route} onManageTicket={onManageTicket} />
+      )}
+      {route && (route.hasPrevious || route.hasMore) && (
+        <nav className="load-more" aria-label="Maintenance route batches">
+          <button
+            type="button"
+            className="button button--secondary"
+            disabled={!route.hasPrevious || loading}
+            onClick={() => setPage((current) => Math.max(1, current - 1))}
+          >
+            Previous 50
+          </button>
+          <span>Route batch {route.page}</span>
+          <button
+            type="button"
+            className="button button--secondary"
+            disabled={!route.hasMore || loading}
+            onClick={() => setPage((current) => current + 1)}
+          >
+            Plan next 50
+          </button>
+        </nav>
       )}
     </section>
   );

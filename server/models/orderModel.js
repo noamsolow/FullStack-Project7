@@ -118,7 +118,13 @@ export async function attachProviderOrder(paymentId, providerOrderId, executor =
 export async function findOrderByPublicId(publicId, executor = connection, lock = false) {
   const [rows] = await executor.query(
     `SELECT
-      o.*, u.public_id AS user_public_id, u.display_name AS customer_name,
+      o.id, o.public_id, o.order_number, o.user_id, o.vendor_id,
+      o.fulfillment_type, o.delivery_building_id, o.delivery_location,
+      o.subtotal_agorot, o.delivery_fee_agorot, o.total_agorot,
+      o.payment_method, o.currency, o.status, o.pickup_code,
+      o.reservation_expires_at, o.completed_at, o.cancelled_at,
+      o.created_at, o.updated_at,
+      u.public_id AS user_public_id, u.display_name AS customer_name,
       v.public_id AS vendor_public_id, v.name AS vendor_name, v.slug AS vendor_slug,
       v.vendor_type, b.short_name AS delivery_building_name
      FROM orders o
@@ -251,7 +257,7 @@ export async function listVendorOrders(vendorId, { fetchLimit, offset, status },
 export async function listVendorDeliveryOrdersForRoute(
   vendorId,
   statuses,
-  limit,
+  { fetchLimit, offset },
   executor = connection,
 ) {
   if (!Array.isArray(statuses) || statuses.length === 0) return [];
@@ -272,8 +278,8 @@ export async function listVendorDeliveryOrdersForRoute(
        FIELD(o.status, 'out_for_delivery', 'preparing'),
        o.created_at,
        o.id
-     LIMIT ?`,
-    [vendorId, ...statuses, limit],
+     LIMIT ? OFFSET ?`,
+    [vendorId, ...statuses, fetchLimit, offset],
   );
   return rows;
 }

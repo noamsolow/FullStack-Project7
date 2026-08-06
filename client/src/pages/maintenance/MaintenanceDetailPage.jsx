@@ -2,8 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Icon } from "../../components/ui/Icon.jsx";
 import { ErrorState, LoadingState } from "../../components/ui/PageState.jsx";
+import { LoadMoreButton } from "../../components/ui/LoadMoreButton.jsx";
 import { StatusChip } from "../../components/ui/StatusChip.jsx";
 import { useApiResource } from "../../hooks/useApiResource.js";
+import { useLoadMoreResource } from "../../hooks/useLoadMoreResource.js";
 import { apiMediaUrl } from "../../services/core/apiClient.js";
 import { maintenanceService } from "../../services/maintenance/maintenanceService.js";
 import { formatDate, titleCase } from "../../utils/format.js";
@@ -12,7 +14,17 @@ import { token } from "../../utils/session.js";
 export function MaintenanceDetailPage() {
   const { publicId } = useParams();
   const load = useCallback(() => maintenanceService.details(publicId), [publicId]);
+  const loadComments = useCallback(
+    ({ page, limit }) => maintenanceService.comments(publicId, { page, limit }),
+    [publicId],
+  );
+  const loadHistory = useCallback(
+    ({ page, limit }) => maintenanceService.history(publicId, { page, limit }),
+    [publicId],
+  );
   const { data, loading, error, reload } = useApiResource(load, [load]);
+  const comments = useLoadMoreResource(loadComments, { pageSize: 10 });
+  const history = useLoadMoreResource(loadHistory, { pageSize: 10 });
   const [comment, setComment] = useState("");
   const [actionError, setActionError] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -24,7 +36,7 @@ export function MaintenanceDetailPage() {
     try {
       await maintenanceService.comment(publicId, { body: comment, isInternal: false });
       setComment("");
-      reload();
+      comments.reload();
     } catch (caught) {
       setActionError(caught);
     } finally {
@@ -55,14 +67,20 @@ export function MaintenanceDetailPage() {
           <section className="card comment-section">
             <h2>Conversation</h2>
             <div className="comments">
-              {ticket.comments.map((item) => (
+              {comments.items.map((item) => (
                 <article key={item.public_id}>
                   <span>{item.author_name.slice(0, 1)}</span>
                   <div><strong>{item.author_name}<small>{item.author_role === "admin" ? "Campus team" : "Reporter"}</small></strong><p>{item.body}</p><time>{formatDate(item.created_at)}</time></div>
                 </article>
               ))}
-              {!ticket.comments.length && <p className="muted">No comments yet.</p>}
+              {!comments.loading && !comments.items.length && <p className="muted">No comments yet.</p>}
             </div>
+            <LoadMoreButton
+              hasMore={comments.meta.hasMore}
+              loading={comments.loadingMore}
+              error={comments.error}
+              onLoadMore={comments.loadMore}
+            />
             {!["closed", "rejected"].includes(ticket.status) && (
               <form onSubmit={addComment} className="comment-form">
                 <label className="sr-only" htmlFor="comment">Add comment</label>
@@ -82,7 +100,16 @@ export function MaintenanceDetailPage() {
               <div><dt>Assigned to</dt><dd>{ticket.assigned_admin_name ?? "Campus queue"}</dd></div>
             </dl>
           </section>
-          <section className="card"><h2>History</h2><ol className="compact-timeline">{ticket.history.map((item) => <li key={`${item.event_type}-${item.created_at}`}><i /><div><strong>{titleCase(item.to_value ?? item.event_type)}</strong><small>{formatDate(item.created_at)}</small></div></li>)}</ol></section>
+          <section className="card">
+            <h2>History</h2>
+            <ol className="compact-timeline">{history.items.map((item) => <li key={`${item.event_type}-${item.created_at}`}><i /><div><strong>{titleCase(item.to_value ?? item.event_type)}</strong><small>{formatDate(item.created_at)}</small></div></li>)}</ol>
+            <LoadMoreButton
+              hasMore={history.meta.hasMore}
+              loading={history.loadingMore}
+              error={history.error}
+              onLoadMore={history.loadMore}
+            />
+          </section>
         </aside>
       </div>
     </div>

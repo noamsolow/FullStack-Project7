@@ -1,20 +1,25 @@
+import {
+  captureOrderPayment,
+  checkout,
+  checkoutOptions,
+} from "../services/orderCheckoutService.js";
 import * as orders from "../services/orderService.js";
 
 const context = (request) => ({ requestId: request.id, ip: request.ip });
 
 export async function checkoutHandler(request, response) {
   response.status(201).json({
-    data: await orders.checkout(request.user, request.body, context(request)),
+    data: await checkout(request.user, request.body, context(request)),
   });
 }
 
 export async function checkoutOptionsHandler(request, response) {
-  response.json({ data: await orders.checkoutOptions(request.user) });
+  response.json({ data: await checkoutOptions(request.user) });
 }
 
 export async function captureHandler(request, response) {
   response.json({
-    data: await orders.captureOrderPayment(
+    data: await captureOrderPayment(
       request.user,
       request.params.publicId,
       request.body,

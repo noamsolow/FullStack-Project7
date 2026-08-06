@@ -6,7 +6,11 @@ import { productImageUpload } from "../middleware/uploads.js";
 import { validate } from "../middleware/validate.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { publicIdParam } from "../validation/common.js";
-import { orderListQuerySchema, updateOrderStatusSchema } from "../validation/orderSchemas.js";
+import {
+  deliveryRouteQuerySchema,
+  orderListQuerySchema,
+  updateOrderStatusSchema,
+} from "../validation/orderSchemas.js";
 import {
   deliveryZoneSchema,
   imageMetadataSchema,
@@ -75,6 +79,7 @@ partnerRouter.get(
 );
 partnerRouter.get(
   "/delivery-route",
+  validate(deliveryRouteQuerySchema, "query"),
   asyncHandler(controller.deliveryRouteHandler),
 );
 partnerRouter.get(

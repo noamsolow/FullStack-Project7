@@ -29,6 +29,25 @@ import {
   validateImage,
 } from "../utils/files.js";
 
+function publicPartnerProduct(product) {
+  const safe = { ...product };
+  delete safe.id;
+  delete safe.vendor_id;
+  delete safe.category_id;
+  return {
+    ...safe,
+    dietary_tags: typeof safe.dietary_tags === "string"
+      ? JSON.parse(safe.dietary_tags)
+      : safe.dietary_tags,
+  };
+}
+
+function publicDeliveryZone(zone) {
+  const safe = { ...zone };
+  delete safe.id;
+  return safe;
+}
+
 export async function requireMembership(userId) {
   const membership = await findUserVendor(userId);
   if (!membership || membership.vendor_status !== "active") {
@@ -41,7 +60,12 @@ export async function partnerVendor(user) {
   const membership = await requireMembership(user.id);
   const vendor = await findVendorByPublicId(membership.vendor_public_id);
   const zones = await listDeliveryZones(membership.vendor_id);
-  return { ...vendor, deliveryZones: zones };
+  const safeVendor = { ...vendor };
+  delete safeVendor.id;
+  return {
+    ...safeVendor,
+    deliveryZones: zones.map(publicDeliveryZone),
+  };
 }
 
 export async function editPartnerVendor(user, input, context) {
@@ -97,7 +121,9 @@ export async function addProduct(user, input, context) {
     resourcePublicId: productPublicId,
     requestId: context.requestId,
   });
-  return findPartnerProduct(productPublicId, membership.vendor_id);
+  return publicPartnerProduct(
+    await findPartnerProduct(productPublicId, membership.vendor_id),
+  );
 }
 
 export async function editProduct(user, productPublicId, input, context) {
@@ -112,7 +138,9 @@ export async function editProduct(user, productPublicId, input, context) {
     resourcePublicId: productPublicId,
     requestId: context.requestId,
   });
-  return findPartnerProduct(productPublicId, membership.vendor_id);
+  return publicPartnerProduct(
+    await findPartnerProduct(productPublicId, membership.vendor_id),
+  );
 }
 
 export async function removeProduct(user, productPublicId, context) {
@@ -159,7 +187,7 @@ export async function uploadProductImage(user, productPublicId, file, input, con
 
 export async function partnerDeliveryZones(user) {
   const membership = await requireMembership(user.id);
-  return listDeliveryZones(membership.vendor_id);
+  return (await listDeliveryZones(membership.vendor_id)).map(publicDeliveryZone);
 }
 
 export async function saveDeliveryZone(user, input, context) {

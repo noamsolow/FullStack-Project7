@@ -8,6 +8,14 @@ export const maintenanceService = {
   details: (publicId) => apiRequest(`/maintenance-tickets/${publicId}`, {
     cache: false,
   }),
+  comments: (publicId, query = {}) => apiRequest(
+    `/maintenance-tickets/${publicId}/comments`,
+    { query, cache: false },
+  ),
+  history: (publicId, query = {}) => apiRequest(
+    `/maintenance-tickets/${publicId}/history`,
+    { query, cache: false },
+  ),
   create: (formData) => apiRequest("/maintenance-tickets", {
     method: "POST",
     body: formData,

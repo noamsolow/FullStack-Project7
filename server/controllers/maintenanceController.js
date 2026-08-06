@@ -23,6 +23,22 @@ export async function detailsHandler(request, response) {
   });
 }
 
+export async function commentsHandler(request, response) {
+  response.json(await maintenance.maintenanceComments(
+    request.user,
+    request.params.publicId,
+    request.query,
+  ));
+}
+
+export async function historyHandler(request, response) {
+  response.json(await maintenance.maintenanceHistory(
+    request.user,
+    request.params.publicId,
+    request.query,
+  ));
+}
+
 export async function commentHandler(request, response) {
   response.status(201).json({
     data: await maintenance.addMaintenanceComment(
@@ -33,4 +49,3 @@ export async function commentHandler(request, response) {
     ),
   });
 }
-

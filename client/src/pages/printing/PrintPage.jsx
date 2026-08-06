@@ -30,7 +30,7 @@ export function PrintPage() {
   const [pageCount, setPageCount] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
-  const loadCenters = useCallback(() => catalogService.printCenters(), []);
+  const loadCenters = useCallback(() => catalogService.printCenters({ limit: 50 }), []);
   const loadJobs = useCallback(() => printService.list({ limit: 6 }), []);
   const centers = useApiResource(loadCenters, [loadCenters]);
   const jobs = useApiResource(loadJobs, [loadJobs]);

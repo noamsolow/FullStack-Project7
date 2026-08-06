@@ -37,10 +37,14 @@ export async function vendorDetails(slug) {
   delete vendor.id;
   return {
     ...withCampusMapPosition(vendor),
-    deliveryZones: zones.map((zone) => ({
-      ...withCampusMapPosition(zone),
-      fee_agorot: calculateDeliveryFeeAgorot(zone),
-    })),
+    deliveryZones: zones.map((zone) => {
+      const publicZone = { ...withCampusMapPosition(zone) };
+      delete publicZone.id;
+      return {
+        ...publicZone,
+        fee_agorot: calculateDeliveryFeeAgorot(zone),
+      };
+    }),
   };
 }
 

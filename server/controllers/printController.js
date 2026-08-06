@@ -1,3 +1,7 @@
+import {
+  capturePrintPayment,
+  createPrintCheckout,
+} from "../services/printPaymentService.js";
 import * as printing from "../services/printService.js";
 
 const context = (request) => ({ requestId: request.id, ip: request.ip });
@@ -25,7 +29,7 @@ export async function detailsHandler(request, response) {
 
 export async function checkoutHandler(request, response) {
   response.status(201).json({
-    data: await printing.createPrintCheckout(
+    data: await createPrintCheckout(
       request.user,
       request.params.publicId,
       context(request),
@@ -35,7 +39,7 @@ export async function checkoutHandler(request, response) {
 
 export async function captureHandler(request, response) {
   response.json({
-    data: await printing.capturePrintPayment(
+    data: await capturePrintPayment(
       request.user,
       request.params.publicId,
       request.body,
@@ -54,4 +58,3 @@ export async function cancelHandler(request, response) {
     ),
   });
 }
-

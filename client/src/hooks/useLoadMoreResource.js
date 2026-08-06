@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const keyFor = (item) => item.public_id ?? item.id;
+const keyFor = (item) => item.public_id ?? item.id ?? JSON.stringify(item);
 
 const emptyState = {
   items: [],

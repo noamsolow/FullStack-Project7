@@ -73,7 +73,7 @@ export async function ordersHandler(request, response) {
 
 export async function deliveryRouteHandler(request, response) {
   response.json({
-    data: await vendorRouting.vendorDeliveryRoutePlan(request.user),
+    data: await vendorRouting.vendorDeliveryRoutePlan(request.user, request.query),
   });
 }
 

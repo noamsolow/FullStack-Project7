@@ -30,6 +30,10 @@ explicitly selects either PayPal or database-backed LevGo tokens. Controllers ne
 run SQL, models never produce HTTP responses, and route files contain no
 business rules.
 
+Large workflows are divided by responsibility: order lifecycle is separate
+from order checkout/payment, print operations are separate from print payment,
+and structured recommendations are separate from conversational shopping help.
+
 ## Server boundaries
 
 ```text
@@ -43,7 +47,7 @@ server/
   controllers/             HTTP adapters
   services/                business rules and transactions
   models/                  parameterized SQL and row mapping
-  integrations/            PayPal and OpenAI HTTP adapters
+  integrations/            PayPal, SMTP, and Gemini adapters
   validation/              Joi request contracts
   utils/                   errors, money, files, pagination, status rules
 ```
@@ -109,9 +113,14 @@ client/src/
 - The client caches safe GET requests in memory, deduplicates concurrent loads,
   and invalidates affected prefixes after mutations.
 - Related detail is loaded only when its route or panel opens.
+- Growing maintenance comments and history are paginated independently after
+  the ticket opens. Maintenance and vendor-delivery route planning process at
+  most 50 tasks per batch and expose previous/next batch controls.
 - Small reference collections that must be complete for a form or campus map
   remain bounded, full-list requests rather than Load More screens.
 - Order, print, and ticket status updates use polling rather than WebSockets.
+- Persisted carts use a user-public-ID namespace; the old shared cart key is
+  discarded so one signed-in account cannot inherit another account's cart.
 ### Delivery tracking
 
 Supplier dispatch starts persisted delivery tracking through a provider interface. The default demo provider assigns a 30-60 second ETA. A background reconciler and customer progress reads move due deliveries to `arrived` idempotently; client countdowns are visual only and never authorize completion.

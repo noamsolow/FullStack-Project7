@@ -51,6 +51,10 @@ export const orderProgressQuerySchema = Joi.object({
   limit: Joi.number().integer().min(1).max(50).default(3),
 });
 
+export const deliveryRouteQuerySchema = Joi.object({
+  ...pagination,
+});
+
 export const updateOrderStatusSchema = Joi.object({
   status: Joi.string().valid(
     "preparing",

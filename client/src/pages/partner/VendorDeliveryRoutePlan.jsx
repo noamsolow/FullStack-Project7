@@ -39,7 +39,11 @@ export function VendorDeliveryRoutePlan({ onManageOrder }) {
 }
 
 function RequestedVendorRoute({ onClose, onManageOrder }) {
-  const load = useCallback(() => partnerService.deliveryRoute(), []);
+  const [page, setPage] = useState(1);
+  const load = useCallback(
+    () => partnerService.deliveryRoute({ page, limit: 50 }),
+    [page],
+  );
   const { data, loading, error, reload } = useApiResource(load);
   const route = data?.data;
 
@@ -66,12 +70,35 @@ function RequestedVendorRoute({ onClose, onManageOrder }) {
       {route && route.orderCount === 0 && (
         <EmptyState
           icon="check"
-          title="No active delivery route needed"
-          message="Move a delivery order into progress to include it in the route suggestion."
+          title={route.hasPreviousOrders ? "No more active deliveries" : "No active delivery route needed"}
+          message={route.hasPreviousOrders
+            ? "Return to the previous delivery batch."
+            : "Move a delivery order into progress to include it in the route suggestion."}
         />
       )}
       {route && route.orderCount > 0 && (
         <VendorRouteResult route={route} onManageOrder={onManageOrder} />
+      )}
+      {route && (route.hasPreviousOrders || route.hasMoreOrders) && (
+        <nav className="load-more" aria-label="Delivery route batches">
+          <button
+            type="button"
+            className="button button--secondary"
+            disabled={!route.hasPreviousOrders || loading}
+            onClick={() => setPage((current) => Math.max(1, current - 1))}
+          >
+            Previous 50
+          </button>
+          <span>Route batch {route.page}</span>
+          <button
+            type="button"
+            className="button button--secondary"
+            disabled={!route.hasMoreOrders || loading}
+            onClick={() => setPage((current) => current + 1)}
+          >
+            Plan next 50
+          </button>
+        </nav>
       )}
     </section>
   );
@@ -90,7 +117,7 @@ function VendorRouteResult({ route, onManageOrder }) {
 
       {route.hasMoreOrders && (
         <p className="maintenance-route__limit-note" role="status">
-          This suggestion uses the first {route.limit} active deliveries. Complete or advance those orders, then refresh for the next group.
+          This suggestion uses {route.limit} active deliveries. Use the next-batch control below to plan the remaining deliveries.
         </p>
       )}
 

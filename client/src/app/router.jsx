@@ -41,7 +41,7 @@ export const router = createBrowserRouter([
       { path: "/services", element: customer(<ServicesPage />) },
       { path: "/eat", element: <Navigate to="/services#food" replace /> },
       { path: "/shop", element: <Navigate to="/services#office" replace /> },
-      { path: "/vendors/:slug", element: <VendorPage /> },
+      { path: "/vendors/:slug", element: customer(<VendorPage />) },
       { path: "/cart", element: customer(<CartPage />) },
       { path: "/payment/return", element: customer(<PaymentReturnPage />) },
       { path: "/payment/cancel", element: customer(<PaymentReturnPage cancelled />) },

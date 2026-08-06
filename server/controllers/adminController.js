@@ -71,9 +71,9 @@ export async function maintenanceHandler(request, response) {
   response.json(await maintenance.adminMaintenanceTickets(request.query));
 }
 
-export async function maintenanceRouteHandler(_request, response) {
+export async function maintenanceRouteHandler(request, response) {
   response.json({
-    data: await maintenance.maintenanceRoutePlan(),
+    data: await maintenance.maintenanceRoutePlan(request.query),
   });
 }
 
@@ -81,6 +81,22 @@ export async function maintenanceDetailsHandler(request, response) {
   response.json({
     data: await maintenance.maintenanceDetails(request.user, request.params.publicId),
   });
+}
+
+export async function maintenanceCommentsHandler(request, response) {
+  response.json(await maintenance.maintenanceComments(
+    request.user,
+    request.params.publicId,
+    request.query,
+  ));
+}
+
+export async function maintenanceHistoryHandler(request, response) {
+  response.json(await maintenance.maintenanceHistory(
+    request.user,
+    request.params.publicId,
+    request.query,
+  ));
 }
 
 export async function updateMaintenanceHandler(request, response) {

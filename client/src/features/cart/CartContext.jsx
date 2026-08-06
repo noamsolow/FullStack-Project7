@@ -8,13 +8,20 @@ import {
 } from "react";
 import { useAuth } from "../auth/AuthContext.jsx";
 
-const CART_KEY = "levgo.cart.v2";
+const LEGACY_CART_KEY = "levgo.cart.v2";
+const CART_KEY_PREFIX = "levgo.cart.v3";
 const EMPTY_CART = { vendor: null, items: [] };
 const CartContext = createContext(null);
 
-function readCart() {
+function cartKey(userPublicId) {
+  return userPublicId ? `${CART_KEY_PREFIX}:${userPublicId}` : null;
+}
+
+function readCart(userPublicId) {
+  const key = cartKey(userPublicId);
+  if (!key) return EMPTY_CART;
   try {
-    const value = localStorage.getItem(CART_KEY);
+    const value = localStorage.getItem(key);
     return value ? JSON.parse(value) : EMPTY_CART;
   } catch {
     return EMPTY_CART;
@@ -23,18 +30,36 @@ function readCart() {
 
 export function CartProvider({ children }) {
   const { user, checking } = useAuth();
-  const [cart, setCartState] = useState(readCart);
+  const userPublicId = user?.publicId ?? null;
+  const [cartState, setCartState] = useState(() => ({
+    ownerPublicId: userPublicId,
+    cart: readCart(userPublicId),
+  }));
+  const cart = cartState.ownerPublicId === userPublicId
+    ? cartState.cart
+    : EMPTY_CART;
 
   useEffect(() => {
-    if (checking || user) return;
-    setCartState(EMPTY_CART);
-    localStorage.removeItem(CART_KEY);
-  }, [checking, user]);
+    localStorage.removeItem(LEGACY_CART_KEY);
+  }, []);
+
+  useEffect(() => {
+    if (checking) return;
+    setCartState({
+      ownerPublicId: userPublicId,
+      cart: readCart(userPublicId),
+    });
+  }, [checking, userPublicId]);
 
   const save = useCallback((next) => {
-    setCartState(next);
-    localStorage.setItem(CART_KEY, JSON.stringify(next));
-  }, []);
+    const key = cartKey(userPublicId);
+    if (!key) {
+      setCartState({ ownerPublicId: null, cart: EMPTY_CART });
+      return;
+    }
+    setCartState({ ownerPublicId: userPublicId, cart: next });
+    localStorage.setItem(key, JSON.stringify(next));
+  }, [userPublicId]);
 
   const addItem = useCallback((product, vendor, replace = false) => {
     if (cart.vendor && cart.vendor.publicId !== vendor.publicId && !replace) {

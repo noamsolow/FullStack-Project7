@@ -1,14 +1,15 @@
 import { listVendorDeliveryOrdersForRoute } from "../models/orderModel.js";
 import { findVendorRouteDepot } from "../models/routingModel.js";
 import { AppError } from "../utils/AppError.js";
+import { paginationFrom } from "../utils/pagination.js";
 import { planCampusTour } from "./campusRoutingService.js";
 import { requireMembership } from "./partnerService.js";
 
 const ROUTABLE_ORDER_STATUSES = ["preparing", "out_for_delivery"];
-const ROUTE_ORDER_LIMIT = 50;
 
-export async function vendorDeliveryRoutePlan(user) {
+export async function vendorDeliveryRoutePlan(user, query) {
   const membership = await requireMembership(user.id);
+  const paging = paginationFrom(query);
   const depot = await findVendorRouteDepot(membership.vendor_id);
   if (!depot) {
     throw new AppError(
@@ -21,10 +22,10 @@ export async function vendorDeliveryRoutePlan(user) {
   const rows = await listVendorDeliveryOrdersForRoute(
     membership.vendor_id,
     ROUTABLE_ORDER_STATUSES,
-    ROUTE_ORDER_LIMIT + 1,
+    paging,
   );
-  const hasMoreOrders = rows.length > ROUTE_ORDER_LIMIT;
-  const orders = rows.slice(0, ROUTE_ORDER_LIMIT);
+  const hasMoreOrders = rows.length > paging.limit;
+  const orders = rows.slice(0, paging.limit);
   const ordersByBuilding = new Map();
 
   for (const order of orders) {
@@ -66,10 +67,12 @@ export async function vendorDeliveryRoutePlan(user) {
     depotBuilding: depot.campus_code,
     depotBuildingName: depot.building_name,
     includedStatuses: [...ROUTABLE_ORDER_STATUSES],
+    page: paging.page,
     orderCount: orders.length,
     stopCount: stops.length,
     hasMoreOrders,
-    limit: ROUTE_ORDER_LIMIT,
+    hasPreviousOrders: paging.page > 1,
+    limit: paging.limit,
     cycle: tour.cycle,
     legs: tour.legs,
     totalDistanceMeters: tour.totalDistanceMeters,

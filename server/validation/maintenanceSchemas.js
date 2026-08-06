@@ -45,6 +45,14 @@ export const adminMaintenanceQuerySchema = Joi.object({
   category,
 });
 
+export const maintenanceRouteQuerySchema = Joi.object({
+  ...pagination,
+});
+
+export const maintenanceActivityQuerySchema = Joi.object({
+  ...pagination,
+});
+
 export const maintenanceCommentSchema = Joi.object({
   body: Joi.string().trim().min(1).max(1000).required(),
   isInternal: Joi.boolean().default(false),

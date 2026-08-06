@@ -68,14 +68,26 @@ export function AdminMaintenancePage() {
 }
 
 function MaintenanceManager({ publicId, onClose, onSaved }) {
-  const load = useCallback(async () => {
-    const [details, admins] = await Promise.all([
-      adminService.maintenanceDetails(publicId),
-      adminService.users({ role: "admin", status: "active", limit: 50 }),
-    ]);
-    return { details, admins };
-  }, [publicId]);
+  const load = useCallback(
+    () => adminService.maintenanceDetails(publicId),
+    [publicId],
+  );
+  const loadComments = useCallback(
+    ({ page, limit }) => adminService.maintenanceComments(publicId, { page, limit }),
+    [publicId],
+  );
+  const loadAdmins = useCallback(
+    ({ page, limit }) => adminService.users({
+      role: "admin",
+      status: "active",
+      page,
+      limit,
+    }),
+    [],
+  );
   const { data, loading, error, reload } = useApiResource(load);
+  const comments = useLoadMoreResource(loadComments, { pageSize: 10 });
+  const adminDirectory = useLoadMoreResource(loadAdmins, { pageSize: 10 });
   const [status, setStatus] = useState("");
   const [priority, setPriority] = useState("");
   const [assignee, setAssignee] = useState("");
@@ -84,8 +96,11 @@ function MaintenanceManager({ publicId, onClose, onSaved }) {
   const [internal, setInternal] = useState(false);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState(null);
-  const ticket = data?.details?.data;
-  const admins = data?.admins?.data ?? [];
+  const ticket = data?.data;
+  const admins = adminDirectory.items;
+  const assignedAdminIsLoaded = admins.some(
+    (admin) => admin.public_id === ticket?.assigned_admin_public_id,
+  );
 
   async function updateTicket(event) {
     event.preventDefault();
@@ -113,7 +128,7 @@ function MaintenanceManager({ publicId, onClose, onSaved }) {
     try {
       await adminService.commentMaintenance(publicId, { body: comment, isInternal: internal });
       setComment("");
-      await reload();
+      await Promise.all([reload(), comments.reload()]);
     } catch (caught) {
       setActionError(caught);
     } finally {
@@ -136,14 +151,26 @@ function MaintenanceManager({ publicId, onClose, onSaved }) {
                 <label>Status<select value={status || ticket.status} onChange={(event) => setStatus(event.target.value)} required><option value={ticket.status}>Keep {titleCase(ticket.status)}</option>{transitions[ticket.status].map((value) => <option key={value} value={value}>{titleCase(value)}</option>)}</select></label>
                 <label>Priority<select value={priority || ticket.priority} onChange={(event) => setPriority(event.target.value)}><option value="low">Low</option><option value="normal">Normal</option><option value="urgent">Urgent</option></select></label>
               </div>
-              <label>Assigned administrator<select value={assignee || ticket.assigned_admin_public_id || ""} onChange={(event) => setAssignee(event.target.value)}><option value="">Assign to me</option>{admins.map((admin) => <option key={admin.public_id} value={admin.public_id}>{admin.display_name}</option>)}</select></label>
+              <label>Assigned administrator<select value={assignee || ticket.assigned_admin_public_id || ""} onChange={(event) => setAssignee(event.target.value)}><option value="">Assign to me</option>{ticket.assigned_admin_public_id && !assignedAdminIsLoaded && <option value={ticket.assigned_admin_public_id}>{ticket.assigned_admin_name}</option>}{admins.map((admin) => <option key={admin.public_id} value={admin.public_id}>{admin.display_name}</option>)}</select></label>
+              <LoadMoreButton
+                hasMore={adminDirectory.meta.hasMore}
+                loading={adminDirectory.loadingMore}
+                error={adminDirectory.items.length ? adminDirectory.error : null}
+                onLoadMore={adminDirectory.loadMore}
+              />
               <label>History note <span className="optional">Optional</span><textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={500} /></label>
               <button className="button button--primary" disabled={busy}>Update ticket</button>
             </form>
           )}
           <section className="drawer-comments">
             <h3>Conversation</h3>
-            <div className="comments">{ticket.comments.map((item) => <article key={item.public_id}><span>{item.author_name.slice(0, 1)}</span><div><strong>{item.author_name}{item.is_internal && <small>Internal</small>}</strong><p>{item.body}</p><time>{formatDate(item.created_at)}</time></div></article>)}</div>
+            <div className="comments">{comments.items.map((item) => <article key={item.public_id}><span>{item.author_name.slice(0, 1)}</span><div><strong>{item.author_name}{item.is_internal && <small>Internal</small>}</strong><p>{item.body}</p><time>{formatDate(item.created_at)}</time></div></article>)}</div>
+            <LoadMoreButton
+              hasMore={comments.meta.hasMore}
+              loading={comments.loadingMore}
+              error={comments.error}
+              onLoadMore={comments.loadMore}
+            />
             {!["closed", "rejected"].includes(ticket.status) && <form onSubmit={addComment}><label>New comment<textarea value={comment} onChange={(event) => setComment(event.target.value)} maxLength={1000} required /></label><label className="check-field"><input type="checkbox" checked={internal} onChange={(event) => setInternal(event.target.checked)} /> Internal note (hidden from reporter)</label><button className="button button--secondary" disabled={busy}>Add comment</button></form>}
           </section>
           {actionError && <ErrorState error={actionError} />}

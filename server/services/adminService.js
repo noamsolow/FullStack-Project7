@@ -18,7 +18,13 @@ import { paginated, paginationFrom } from "../utils/pagination.js";
 export async function adminUsers(query) {
   const paging = paginationFrom(query);
   const rows = await listUsers({ ...paging, ...query });
-  return paginated(rows, paging.page, paging.limit);
+  const publicRows = rows.map((row) => {
+    const user = { ...row };
+    delete user.id;
+    delete user.vendor_id;
+    return user;
+  });
+  return paginated(publicRows, paging.page, paging.limit);
 }
 
 export async function blockUser(admin, publicId, blocked, context) {

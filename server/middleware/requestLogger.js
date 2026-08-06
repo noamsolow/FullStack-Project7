@@ -1,3 +1,4 @@
+
 export function requestLogger(request, response, next) {
   const startedAt = process.hrtime.bigint();
   const path = request.originalUrl.split("?", 1)[0];

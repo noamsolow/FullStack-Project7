@@ -4,7 +4,6 @@ import { config } from "./config/index.js";
 import { assertDatabaseConnection } from "./db/connection.js";
 import { requestContext } from "./middleware/requestContext.js";
 import { requestLogger } from "./middleware/requestLogger.js";
-import { securityHeaders } from "./middleware/securityHeaders.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 import { authRouter } from "./routes/authRoutes.js";
 import { catalogRouter } from "./routes/catalogRoutes.js";
@@ -24,7 +23,6 @@ export function createApp() {
 
   app.use(requestContext);
   app.use(requestLogger);
-  app.use(securityHeaders);
   app.use(cors({
     origin: config.clientOrigin,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],

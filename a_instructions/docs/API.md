@@ -29,7 +29,10 @@ server caps `limit` at 50 and returns `meta.page`, `meta.limit`, and
 `meta.hasMore`. Customer-facing card lists request 6 rows at a time and
 operational tables request 10 rows at a time.
 
-## Public catalog
+## Catalog
+
+Buildings are public so registration can populate the campus selector. All
+other catalog routes require authentication.
 
 | Method | Route | Purpose |
 |---|---|---|
@@ -69,6 +72,8 @@ operational tables request 10 rows at a time.
 | POST | `/print-jobs/:publicId/cancellation-requests` |
 | GET/POST | `/maintenance-tickets` |
 | GET | `/maintenance-tickets/:publicId` |
+| GET | `/maintenance-tickets/:publicId/comments?page=1&limit=10` |
+| GET | `/maintenance-tickets/:publicId/history?page=1&limit=10` |
 | POST | `/maintenance-tickets/:publicId/comments` |
 | GET | `/media/print-files/:publicId` |
 | GET | `/media/maintenance/:publicId` |
@@ -85,6 +90,7 @@ PUT/DELETE /partner/products/:productPublicId
 POST /partner/products/:productPublicId/images
 GET/PUT /partner/delivery-zones
 GET /partner/orders
+GET /partner/delivery-route
 GET /partner/orders/:publicId
 PATCH /partner/orders/:publicId/status
 GET /partner/print-jobs
@@ -104,6 +110,8 @@ GET/POST /admin/buildings
 PUT /admin/buildings/:id
 GET /admin/maintenance-tickets
 GET/PATCH /admin/maintenance-tickets/:publicId
+GET /admin/maintenance-tickets/:publicId/comments
+GET /admin/maintenance-tickets/:publicId/history
 POST /admin/maintenance-tickets/:publicId/comments
 GET /admin/audit
 ```

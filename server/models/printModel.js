@@ -72,7 +72,13 @@ export async function addPrintHistory(
 export async function findPrintJobByPublicId(publicId, executor = connection, lock = false) {
   const [rows] = await executor.query(
     `SELECT
-      pj.*, u.public_id AS user_public_id, u.display_name AS customer_name,
+      pj.id, pj.public_id, pj.job_number, pj.user_id, pj.vendor_id,
+      pj.paper_size, pj.color_mode, pj.sides, pj.copies, pj.stapled,
+      pj.laminated, pj.spiral_bound, pj.customer_note, pj.quote_agorot,
+      pj.currency, pj.quote_expires_at, pj.status, pj.pickup_code,
+      pj.completed_at, pj.cancelled_at, pj.retention_delete_at,
+      pj.created_at, pj.updated_at,
+      u.public_id AS user_public_id, u.display_name AS customer_name,
       v.public_id AS vendor_public_id, v.name AS vendor_name, v.slug AS vendor_slug,
       b.short_name AS building_name, pf.public_id AS file_public_id,
       pf.original_name AS file_name, pf.size_bytes AS file_size_bytes
@@ -293,7 +299,9 @@ export async function createPrintCancellationRequest(data, executor = connection
 export async function findPrintFile(publicId, executor = connection) {
   const [rows] = await executor.query(
     `SELECT
-      pf.*, pj.user_id, pj.vendor_id, pj.public_id AS print_job_public_id
+      pf.id, pf.public_id, pf.print_job_id, pf.original_name, pf.mime_type,
+      pf.size_bytes, pf.file_data, pf.sha256, pf.created_at, pf.deleted_at,
+      pj.user_id, pj.vendor_id, pj.public_id AS print_job_public_id
      FROM print_files pf
      JOIN print_jobs pj ON pj.id = pf.print_job_id
      WHERE pf.public_id = ? AND pf.deleted_at IS NULL

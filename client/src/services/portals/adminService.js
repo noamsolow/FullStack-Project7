@@ -24,12 +24,21 @@ export const adminService = {
     query,
     cache: false,
   }),
-  maintenanceRoute: () => apiRequest("/admin/maintenance-route", {
+  maintenanceRoute: (query = {}) => apiRequest("/admin/maintenance-route", {
+    query,
     cacheMs: 0,
   }),
   maintenanceDetails: (publicId) => apiRequest(
     `/admin/maintenance-tickets/${publicId}`,
     { cache: false },
+  ),
+  maintenanceComments: (publicId, query = {}) => apiRequest(
+    `/admin/maintenance-tickets/${publicId}/comments`,
+    { query, cache: false },
+  ),
+  maintenanceHistory: (publicId, query = {}) => apiRequest(
+    `/admin/maintenance-tickets/${publicId}/history`,
+    { query, cache: false },
   ),
   updateMaintenance: (publicId, body) => apiRequest(
     `/admin/maintenance-tickets/${publicId}`,

@@ -320,7 +320,11 @@ export async function listDeliveryZones(vendorId, executor = connection) {
 
 export async function findDeliveryZone(vendorId, buildingId, executor = connection) {
   const [rows] = await executor.query(
-    `SELECT dz.*, b.short_name AS building_name,
+    `SELECT
+       dz.id, dz.vendor_id, dz.building_id, dz.fee_agorot,
+       dz.minimum_order_agorot, dz.eta_min_minutes, dz.eta_max_minutes,
+       dz.is_active, dz.created_at, dz.updated_at,
+       b.short_name AS building_name,
        b.campus_code, v.building_id AS vendor_building_id,
        source.campus_code AS source_campus_code
      FROM vendor_delivery_zones dz

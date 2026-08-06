@@ -56,7 +56,7 @@ A production deployment should add scanning and isolated print processing.
 ## LLM safety
 
 Only budget, category, dietary choices, and a minimized catalog projection are
-sent to OpenAI. No profile, payment, maintenance, or print-file data is sent.
+sent to Gemini. No profile, payment, maintenance, or print-file data is sent.
 The server filters candidate products before the request and discards returned
 IDs that were not in that set. Recommendations cannot mutate application state.
 

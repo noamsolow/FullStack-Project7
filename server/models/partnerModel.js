@@ -56,7 +56,12 @@ export async function createProduct(data, executor = connection) {
 
 export async function findPartnerProduct(publicId, vendorId, executor = connection) {
   const [rows] = await executor.query(
-    `SELECT p.*, c.slug AS category_slug, c.name AS category_name
+    `SELECT
+       p.id, p.public_id, p.vendor_id, p.category_id, p.sku, p.name,
+       p.description, p.need_type, p.price_agorot, p.stock_quantity,
+       p.dietary_tags, p.allergen_text, p.is_available,
+       p.created_at, p.updated_at,
+       c.slug AS category_slug, c.name AS category_name
      FROM products p
      JOIN categories c ON c.id = p.category_id
      WHERE p.public_id = ? AND p.vendor_id = ? AND p.deleted_at IS NULL
@@ -117,7 +122,10 @@ export async function insertProductImage(data, executor = connection) {
 
 export async function findProductImage(publicId, executor = connection) {
   const [rows] = await executor.query(
-    `SELECT pi.*, p.vendor_id
+    `SELECT
+       pi.id, pi.public_id, pi.product_id, pi.original_name, pi.mime_type,
+       pi.size_bytes, pi.file_data, pi.alt_text, pi.created_at,
+       p.vendor_id
      FROM product_images pi
      JOIN products p ON p.id = pi.product_id
      WHERE pi.public_id = ? AND p.deleted_at IS NULL

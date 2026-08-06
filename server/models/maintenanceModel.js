@@ -59,7 +59,11 @@ export async function addMaintenanceHistory(data, executor = connection) {
 export async function findMaintenanceTicket(publicId, executor = connection, lock = false) {
   const [rows] = await executor.query(
     `SELECT
-      mt.*, reporter.public_id AS reporter_public_id,
+      mt.id, mt.public_id, mt.ticket_number, mt.reporter_user_id,
+      mt.assigned_admin_id, mt.building_id, mt.location_text, mt.category,
+      mt.title, mt.description, mt.requested_priority, mt.priority, mt.status,
+      mt.resolved_at, mt.closed_at, mt.created_at, mt.updated_at,
+      reporter.public_id AS reporter_public_id,
       reporter.display_name AS reporter_name,
       admin.public_id AS assigned_admin_public_id,
       admin.display_name AS assigned_admin_name,
@@ -144,6 +148,7 @@ export async function listAdminTickets(
 
 export async function listMaintenanceTicketsForRoute(
   statuses,
+  { fetchLimit, offset },
   executor = connection,
 ) {
   if (!Array.isArray(statuses) || statuses.length === 0) return [];
@@ -161,8 +166,9 @@ export async function listMaintenanceTicketsForRoute(
      ORDER BY
        FIELD(mt.priority, 'urgent', 'normal', 'low'),
        mt.created_at,
-       mt.id`,
-    statuses,
+       mt.id
+     LIMIT ? OFFSET ?`,
+    [...statuses, fetchLimit, offset],
   );
   return rows;
 }
@@ -181,7 +187,9 @@ export async function listMaintenanceAttachments(ticketId, executor = connection
 export async function findMaintenanceAttachment(publicId, executor = connection) {
   const [rows] = await executor.query(
     `SELECT
-      ma.*, mt.reporter_user_id, mt.public_id AS ticket_public_id
+      ma.id, ma.public_id, ma.maintenance_ticket_id, ma.original_name,
+      ma.mime_type, ma.size_bytes, ma.file_data, ma.created_at,
+      mt.reporter_user_id, mt.public_id AS ticket_public_id
      FROM maintenance_attachments ma
      JOIN maintenance_tickets mt ON mt.id = ma.maintenance_ticket_id
      WHERE ma.public_id = ?
@@ -191,7 +199,12 @@ export async function findMaintenanceAttachment(publicId, executor = connection)
   return rows[0] ?? null;
 }
 
-export async function listMaintenanceComments(ticketId, includeInternal, executor = connection) {
+export async function listMaintenanceComments(
+  ticketId,
+  includeInternal,
+  { fetchLimit, offset },
+  executor = connection,
+) {
   const [rows] = await executor.query(
     `SELECT
       mc.public_id, mc.body, mc.is_internal, mc.created_at,
@@ -201,13 +214,18 @@ export async function listMaintenanceComments(ticketId, includeInternal, executo
      JOIN users u ON u.id = mc.author_user_id
      WHERE mc.maintenance_ticket_id = ?
        ${includeInternal ? "" : "AND mc.is_internal = FALSE"}
-     ORDER BY mc.created_at`,
-    [ticketId],
+     ORDER BY mc.created_at DESC, mc.id DESC
+     LIMIT ? OFFSET ?`,
+    [ticketId, fetchLimit, offset],
   );
   return rows;
 }
 
-export async function listMaintenanceHistory(ticketId, executor = connection) {
+export async function listMaintenanceHistory(
+  ticketId,
+  { fetchLimit, offset },
+  executor = connection,
+) {
   const [rows] = await executor.query(
     `SELECT
       mh.event_type, mh.from_value, mh.to_value, mh.note, mh.created_at,
@@ -215,8 +233,9 @@ export async function listMaintenanceHistory(ticketId, executor = connection) {
      FROM maintenance_history mh
      LEFT JOIN users u ON u.id = mh.actor_user_id
      WHERE mh.maintenance_ticket_id = ?
-     ORDER BY mh.created_at`,
-    [ticketId],
+     ORDER BY mh.created_at DESC, mh.id DESC
+     LIMIT ? OFFSET ?`,
+    [ticketId, fetchLimit, offset],
   );
   return rows;
 }

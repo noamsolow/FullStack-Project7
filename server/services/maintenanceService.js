@@ -95,23 +95,44 @@ export async function maintenanceDetails(user, publicIdValue) {
   if (user.role !== "admin" && ticket.reporter_user_id !== user.id) {
     throw forbidden();
   }
-  const [attachments, comments, history] = await Promise.all([
-    listMaintenanceAttachments(ticket.id),
-    listMaintenanceComments(ticket.id, user.role === "admin"),
-    listMaintenanceHistory(ticket.id),
-  ]);
+  const attachments = await listMaintenanceAttachments(ticket.id);
   delete ticket.id;
   delete ticket.reporter_user_id;
   delete ticket.assigned_admin_id;
   return {
     ...ticket,
     attachments,
-    comments,
-    history,
     emergencyContactMessage: ticket.priority === "urgent"
       ? config.emergencyContactMessage
       : null,
   };
+}
+
+async function readableMaintenanceTicket(user, publicIdValue) {
+  const ticket = await findMaintenanceTicket(publicIdValue);
+  if (!ticket) throw notFound("Maintenance ticket not found");
+  if (user.role !== "admin" && ticket.reporter_user_id !== user.id) {
+    throw forbidden();
+  }
+  return ticket;
+}
+
+export async function maintenanceComments(user, publicIdValue, query) {
+  const ticket = await readableMaintenanceTicket(user, publicIdValue);
+  const paging = paginationFrom(query);
+  const rows = await listMaintenanceComments(
+    ticket.id,
+    user.role === "admin",
+    paging,
+  );
+  return paginated(rows, paging.page, paging.limit);
+}
+
+export async function maintenanceHistory(user, publicIdValue, query) {
+  const ticket = await readableMaintenanceTicket(user, publicIdValue);
+  const paging = paginationFrom(query);
+  const rows = await listMaintenanceHistory(ticket.id, paging);
+  return paginated(rows, paging.page, paging.limit);
 }
 
 export async function customerMaintenanceTickets(user, query) {
@@ -126,10 +147,14 @@ export async function adminMaintenanceTickets(query) {
   return paginated(rows, paging.page, paging.limit);
 }
 
-export async function maintenanceRoutePlan() {
-  const tickets = await listMaintenanceTicketsForRoute(
+export async function maintenanceRoutePlan(query) {
+  const paging = paginationFrom(query);
+  const rows = await listMaintenanceTicketsForRoute(
     ROUTABLE_MAINTENANCE_STATUSES,
+    paging,
   );
+  const hasMore = rows.length > paging.limit;
+  const tickets = rows.slice(0, paging.limit);
   const ticketsByBuilding = new Map();
 
   tickets.forEach((ticket) => {
@@ -154,6 +179,10 @@ export async function maintenanceRoutePlan() {
   return {
     depotBuilding: MAINTENANCE_DEPOT_BUILDING,
     includedStatuses: [...ROUTABLE_MAINTENANCE_STATUSES],
+    page: paging.page,
+    limit: paging.limit,
+    hasMore,
+    hasPrevious: paging.page > 1,
     ticketCount: tickets.length,
     stopCount: stops.length,
     cycle: tour.cycle,
