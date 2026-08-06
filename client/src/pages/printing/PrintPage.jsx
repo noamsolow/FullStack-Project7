@@ -178,7 +178,7 @@ export function PrintPage() {
               <li>Generated storage filename</li>
               <li>Role-checked file access</li>
               <li>Never sent to the AI assistant</li>
-              <li>Deleted after the retention period</li>
+              <li>Available only through role-checked access</li>
             </ul>
           </div>
           <div className="recent-panel">

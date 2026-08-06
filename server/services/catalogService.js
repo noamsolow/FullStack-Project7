@@ -14,6 +14,7 @@ import {
 } from "../utils/deliveryPricing.js";
 import { paginated, paginationFrom } from "../utils/pagination.js";
 
+
 export async function buildings(query) {
   const paging = paginationFrom(query);
   const rows = await listBuildings(paging);

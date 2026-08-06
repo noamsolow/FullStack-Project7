@@ -1,7 +1,4 @@
-import {
-  findActiveAdminByPublicId,
-  findUserVendor,
-} from "../models/userModel.js";
+import { findUserVendor } from "../models/userModel.js";
 import {
   createProduct,
   findCategoryBySlug,
@@ -206,8 +203,3 @@ export async function saveDeliveryZone(user, input, context) {
   return partnerDeliveryZones(user);
 }
 
-export async function ensureAdminUser(publicIdValue) {
-  const admin = await findActiveAdminByPublicId(publicIdValue);
-  if (!admin) throw new AppError(400, "INVALID_ADMIN", "Select an active administrator");
-  return admin;
-}

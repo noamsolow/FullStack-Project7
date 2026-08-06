@@ -1,4 +1,5 @@
 import multer from "multer";
+import { DuplicateRecordError } from "../db/errors.js";
 import { AppError } from "../utils/AppError.js";
 
 export function notFoundHandler(request, _response, next) {
@@ -15,7 +16,7 @@ export function errorHandler(error, request, response, next) {
   if (error instanceof multer.MulterError) {
     normalized = new AppError(400, "INVALID_UPLOAD", "The uploaded file is invalid");
   }
-  if (error?.code === "ER_DUP_ENTRY") {
+  if (error instanceof DuplicateRecordError) {
     normalized = new AppError(409, "DUPLICATE_RESOURCE", "That value is already in use");
   }
 

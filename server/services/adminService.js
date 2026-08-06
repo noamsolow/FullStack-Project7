@@ -14,7 +14,7 @@ import {
 } from "../models/userModel.js";
 import { AppError, notFound } from "../utils/AppError.js";
 import { paginated, paginationFrom } from "../utils/pagination.js";
-
+// This service provides administrative functions for managing users, vendors, buildings, and audit logs.
 export async function adminUsers(query) {
   const paging = paginationFrom(query);
   const rows = await listUsers({ ...paging, ...query });
@@ -44,7 +44,7 @@ export async function blockUser(admin, publicId, blocked, context) {
     requestId: context.requestId,
   });
 }
-
+// This service provides administrative functions for managing users, vendors, buildings, and audit logs.
 export async function adminVendors(query) {
   const paging = paginationFrom(query);
   const rows = await listAdminVendors({ ...paging, ...query });

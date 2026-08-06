@@ -2,6 +2,7 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { config } from "../config/index.js";
 import { withTransaction } from "../db/connection.js";
+import { DuplicateRecordError } from "../db/errors.js";
 import { buildingExists } from "../models/catalogModel.js";
 import {
   createUser,
@@ -57,6 +58,7 @@ function normalizeEmail(email) {
   return email.trim().toLowerCase();
 }
 
+// Checks if the email domain is allowed for customer registration
 function customerDomainAllowed(email) {
   const domain = email.split("@")[1] ?? "";
   return config.allowedCustomerEmailDomains.includes(domain);
@@ -91,7 +93,7 @@ export async function registerCustomer(input, context) {
     role: "customer",
     passwordHash,
   }).catch((error) => {
-    if (error.code === "ER_DUP_ENTRY") {
+    if (error instanceof DuplicateRecordError) {
       throw conflict("An account already uses that email", "EMAIL_IN_USE");
     }
     throw error;
@@ -139,7 +141,7 @@ export async function registerPartner(input, context) {
       vendorId,
       passwordHash,
     }, connection).catch((error) => {
-      if (error.code === "ER_DUP_ENTRY") {
+      if (error instanceof DuplicateRecordError) {
         throw conflict("An account already uses that email", "EMAIL_IN_USE");
       }
       throw error;
@@ -211,6 +213,7 @@ export async function currentUser(user) {
   return safeUser(user, membership);
 }
 
+
 export async function completedSpending(user) {
   return {
     totalSpentAgorot: await findUserCompletedSpending(user.id),
@@ -244,19 +247,6 @@ export async function deleteProfile(user, context) {
     resourcePublicId: user.public_id,
     requestId: context.requestId,
     ip: context.ip,
-  });
-}
-
-export async function createSeedUser(data) {
-  const existing = await findUserByEmail(normalizeEmail(data.email));
-  if (existing) return existing;
-  return createUser({
-    publicId: publicId(),
-    email: normalizeEmail(data.email),
-    displayName: data.displayName,
-    customerType: data.customerType,
-    role: data.role,
-    passwordHash: await bcrypt.hash(data.password, 12),
   });
 }
 

@@ -407,16 +407,3 @@ export async function findOpenOrderCancellation(orderId, executor = connection) 
   return rows[0] ?? null;
 }
 
-export async function findExpiredReservations(limit = 50, executor = connection) {
-  const [rows] = await executor.query(
-    `SELECT id, public_id
-     FROM orders
-     WHERE status = 'pending_payment'
-       AND reservation_expires_at IS NOT NULL
-       AND reservation_expires_at < CURRENT_TIMESTAMP
-     ORDER BY reservation_expires_at
-     LIMIT ?`,
-    [limit],
-  );
-  return rows;
-}

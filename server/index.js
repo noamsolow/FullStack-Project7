@@ -1,7 +1,6 @@
 import { createApp } from "./app.js";
 import { config } from "./config/index.js";
 import { assertDatabaseConnection, connection } from "./db/connection.js";
-import { startCleanupTimer } from "./services/cleanupService.js";
 import { startDeliveryTrackingTimer } from "./services/deliveryTrackingService.js";
 
 await assertDatabaseConnection();
@@ -14,12 +13,10 @@ const server = app.listen(config.port, () => {
     environment: config.nodeEnv,
   }));
 });
-const cleanupTimer = startCleanupTimer();
 const deliveryTrackingTimer = startDeliveryTrackingTimer();
 
 async function shutdown(signal) {
   console.log(JSON.stringify({ level: "info", message: `Received ${signal}` }));
-  clearInterval(cleanupTimer);
   clearInterval(deliveryTrackingTimer);
   server.close(async () => {
     await connection.end();

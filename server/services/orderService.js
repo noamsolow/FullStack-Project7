@@ -3,7 +3,6 @@ import { writeAudit } from "../models/auditModel.js";
 import {
   addOrderHistory,
   createOrderCancellationRequest,
-  findExpiredReservations,
   findOpenOrderCancellation,
   findOrderByPublicId,
   findPaymentForOrder,
@@ -234,30 +233,4 @@ export async function cancelOrRequestOrder(user, publicIdValue, input, context) 
     requestId: context.requestId,
   });
   return orderDetails(user, publicIdValue);
-}
-
-export async function expireReservations() {
-  const expired = await findExpiredReservations();
-  let cancelled = 0;
-  for (const item of expired) {
-    const didCancel = await withTransaction(async (connection) => {
-      const order = await findOrderByPublicId(item.public_id, connection, true);
-      if (
-        !order
-        || order.status !== "pending_payment"
-        || new Date(order.reservation_expires_at).getTime() >= Date.now()
-      ) return false;
-      await restoreOrderStock(order.id, connection);
-      await setOrderStatus(order.id, "cancelled", connection);
-      await addOrderHistory({
-        orderId: order.id,
-        fromStatus: "pending_payment",
-        toStatus: "cancelled",
-        note: "Payment reservation expired",
-      }, connection);
-      return true;
-    });
-    if (didCancel) cancelled += 1;
-  }
-  return cancelled;
 }

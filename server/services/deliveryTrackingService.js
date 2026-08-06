@@ -1,5 +1,6 @@
 import { config } from "../config/index.js";
 import { withTransaction } from "../db/connection.js";
+import { DatabaseSchemaError } from "../db/errors.js";
 import { createDeliveryTracking } from "../integrations/deliveryTrackingProvider.js";
 import {
   createOrderDeliveryTracking,
@@ -19,8 +20,9 @@ import { AppError } from "../utils/AppError.js";
 import { paginated, paginationFrom } from "../utils/pagination.js";
 
 function isMissingTrackingMigration(error) {
-  return ["ER_NO_SUCH_TABLE", "ER_BAD_FIELD_ERROR"].includes(error?.code);
+  return error instanceof DatabaseSchemaError;
 }
+
 
 export async function startTrackingForOrder(order, executor) {
   if (order.fulfillment_type !== "delivery") return null;

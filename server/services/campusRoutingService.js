@@ -179,7 +179,3 @@ function buildRouteDetails(fromNodeId, toNodeId, routingState) {
   };
 }
 
-export async function findCampusRoute(fromNodeId, toNodeId) {
-  const routingState = await getRoutingState();
-  return buildRouteDetails(fromNodeId, toNodeId, routingState);
-}

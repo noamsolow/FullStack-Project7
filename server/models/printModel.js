@@ -311,25 +311,3 @@ export async function findPrintFile(publicId, executor = connection) {
   return rows[0] ?? null;
 }
 
-export async function listExpiredPrintFiles(limit = 50, executor = connection) {
-  const [rows] = await executor.query(
-    `SELECT pf.id
-     FROM print_files pf
-     JOIN print_jobs pj ON pj.id = pf.print_job_id
-     WHERE pf.deleted_at IS NULL
-       AND pj.retention_delete_at IS NOT NULL
-       AND pj.retention_delete_at < CURRENT_TIMESTAMP
-     LIMIT ?`,
-    [limit],
-  );
-  return rows;
-}
-
-export async function markPrintFileDeleted(id, executor = connection) {
-  await executor.query(
-    `UPDATE print_files
-     SET file_data = X'', deleted_at = CURRENT_TIMESTAMP
-     WHERE id = ?`,
-    [id],
-  );
-}

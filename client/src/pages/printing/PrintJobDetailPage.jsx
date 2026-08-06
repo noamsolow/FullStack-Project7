@@ -119,7 +119,7 @@ export function PrintJobDetailPage() {
           {["submitted", "quoted", "pending_payment", "paid"].includes(job.status) && (
             <form className="card compact-form" onSubmit={cancel}>
               <h2>{job.status === "paid" ? "Request cancellation" : "Cancel print job"}</h2>
-              <p>{job.status === "paid" ? "Approved jobs require manual cancellation review." : "The private file will follow the 30-day deletion policy."}</p>
+              <p>{job.status === "paid" ? "Approved jobs require manual cancellation review." : "This stops the job before production begins."}</p>
               <label>Reason<textarea value={reason} onChange={(event) => setReason(event.target.value)} minLength={5} maxLength={500} required /></label>
               <button className="button button--danger button--full" disabled={busy}>{busy ? "Submitting..." : "Continue"}</button>
             </form>

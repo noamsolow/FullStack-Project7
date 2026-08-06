@@ -1,4 +1,5 @@
 import { connection } from "../db/connection.js";
+import { DatabaseSchemaError } from "../db/errors.js";
 
 export async function findTokenBalance(userId, executor = connection, lock = false) {
   try {
@@ -12,7 +13,7 @@ export async function findTokenBalance(userId, executor = connection, lock = fal
     );
     return rows[0] ? Number(rows[0].token_balance) : null;
   } catch (error) {
-    if (error.code === "ER_BAD_FIELD_ERROR") return null;
+    if (error instanceof DatabaseSchemaError) return null;
     throw error;
   }
 }

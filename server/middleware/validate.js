@@ -1,5 +1,6 @@
 import { AppError } from "../utils/AppError.js";
 
+// This middleware validates the request body or query parameters against a Joi schema.
 export function validate(schema, source = "body") {
   return function validateRequest(request, _response, next) {
     const { value, error } = schema.validate(request[source], {

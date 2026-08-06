@@ -16,7 +16,7 @@ const baseSafeUserColumns = `
 
 let hasUserVendorColumn;
 let hasTokenBalanceColumn;
-
+// This function checks if the 'users' table has a 'vendor_id' column, which indicates embedded vendor membership.
 async function usesEmbeddedVendorMembership(executor = connection) {
   if (hasUserVendorColumn === true) return true;
   const [rows] = await executor.query(
